@@ -1,5 +1,6 @@
 /*
     aos_osal - AOS OSAL API
+    /author yahayahusseini321@gmail.com
 */
 
 #ifndef AOS_OSAL_H
@@ -11,18 +12,24 @@
 extern "C" {
 #endif
 
-/*Status Vocabulary*/
-#define AOS_SUCCESS             ( 0)
-#define AOS_ERROR               (-1)
-#define AOS_INVALID_POINTER     (-2)
-#define AOS_ERR_INVALID_SIZE    (-3)
-#define AOS_SEM_TIMEOUT         (-7)
-#define AOS_ERR_NAME_TOO_LONG   (-13)
-#define AOS_ERR_NO_FREE_IDS     (-14)
-#define AOS_ERR_NAME_TAKEN      (-15)
-#define AOS_ERR_INVALID_ID      (-16)
-#define AOS_ERR_INVALID_PRIORITY (-19)
- 
+enum aos_status {
+    AOS_SUCCESS              =  0,
+    AOS_ERROR                = -1,   /* unspecified failure         (M1) */
+    AOS_INVALID_POINTER      = -2,   /* a required pointer was NULL (M1) */
+    AOS_ERR_INVALID_ID       = -5,
+    AOS_ERR_INVALID_SIZE     = -6,
+    AOS_ERR_NAME_TOO_LONG    = -7,
+    AOS_ERR_NAME_TAKEN       = -8,
+    AOS_ERR_NO_FREE_IDS      = -9,
+    AOS_ERR_INVALID_PRIORITY = -10,
+    AOS_ERR_INVALID_PARAM    = -11,
+    AOS_ERR_CREATION_FAILED  = -12,
+    AOS_SEM_TIMEOUT          = -16
+};
+
+/* Decode a code to its name (logging + test output).*/
+const char *aos_strerror(int32_t code);
+
 /*static configuration (object tables live in .bss)*/
 #define AOS_MAX_NAME     20
 #define AOS_MAX_TASKS     8
@@ -57,6 +64,7 @@ int32_t AOS_Init(void);
 /* time */
 typedef int64_t aos_time_t;               /* microseconds, monotonic */
 int32_t AOS_TimeGet(aos_time_t *now_us);  /* writes current time; NULL -> INVALID_POINTER */
+
 #ifdef __cplusplus
 }
 #endif

@@ -18,6 +18,7 @@ set(AOS_SOURCES
     # src/os/${AOS_BACKEND}/src/aos_${AOS_BACKEND}.c   # posix -> aos_posix.c, nuttx -> aos_nuttx.c
 
     src/os/${AOS_BACKEND}/src/aos_posix.c
+    src/os/${AOS_BACKEND}/src/aos_status.c
 
     #   src/os/${AOS_BACKEND}/src/aos_task.c
     #   src/os/${AOS_BACKEND}/src/aos_mutex.c
@@ -47,6 +48,6 @@ endfunction()
 
 aos_add_test(test_core)        # M0  
 aos_add_test(test_time)        # M1  
-# ++ aos_add_test(test_task)     # M2  — uncomment when tests/test_task.c exists
-# ++ aos_add_test(test_mutex)    # M3
+aos_add_test(test_task)        # M2  
+# ++ aos_add_test(test_mutex)    # M3  — uncomment when tests/test_mutex.c exists
 # ++ aos_add_test(test_binsem)   # M4

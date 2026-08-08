@@ -23,6 +23,9 @@ int main(){
     CHECK("AOS-CORE-002",  "NONE has type NONE",       aos_id_type(AOS_ID_NONE) == AOS_TYPE_NONE);
     CHECK("AOS-CORE-003",  "init succeeds",            AOS_Init() == AOS_SUCCESS);
  
+    printf("  decoder: %d -> %s\n", (int)AOS_INVALID_POINTER, aos_strerror(AOS_INVALID_POINTER));
+
+
     printf(fails ? "\n%d FAILED\n" : "\nALL PASSED\n", fails);
     return fails ? 1 : 0;
 }
