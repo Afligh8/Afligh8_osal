@@ -24,18 +24,18 @@ extern "C" {
 #endif
 
 enum aos_status {
-    AOS_SUCCESS              =  0,
-    AOS_ERROR                = -1,   /* unspecified failure         (M1) */
-    AOS_INVALID_POINTER      = -2,   /* a required pointer was NULL (M1) */
-    AOS_ERR_INVALID_ID       = -5,
-    AOS_ERR_INVALID_SIZE     = -6,
-    AOS_ERR_NAME_TOO_LONG    = -7,
-    AOS_ERR_NAME_TAKEN       = -8,
-    AOS_ERR_NO_FREE_IDS      = -9,
-    AOS_ERR_INVALID_PRIORITY = -10,
-    AOS_ERR_INVALID_PARAM    = -11,
-    AOS_ERR_CREATION_FAILED  = -12,
-    AOS_ERR_TIMEOUT          = -16          /* wait primitive timed out (any object) */
+    AOS_SUCCESS                 =   0,
+    AOS_ERR_GENERIC             =  -1,   /* unspecified failure          (M1) */
+    AOS_ERR_INVALID_POINTER     =  -2,   /* a required pointer was NULL  (M1) */
+    AOS_ERR_INVALID_ID          =  -5,
+    AOS_ERR_INVALID_SIZE        =  -6,
+    AOS_ERR_NAME_TOO_LONG       =  -7,
+    AOS_ERR_NAME_TAKEN          =  -8,
+    AOS_ERR_NO_FREE_IDS         =  -9,
+    AOS_ERR_INVALID_PRIORITY    = -10,
+    AOS_ERR_INVALID_PARAM       = -11,
+    AOS_ERR_CREATION_FAILED     = -12,
+    AOS_ERR_TIMEOUT             = -16    /* wait primitive timed out (any object) */
 };
 
 /*
