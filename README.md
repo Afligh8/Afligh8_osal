@@ -1,2 +1,2 @@
 # Afligh8_osal
-Operating System Abstraction Layer (OSAL) written in C for the afligh8 flight controller platform, providing a unified API to decouple core application logic from low-level OS dependencies.
+Afligh8_osal is a portable OSAL that lets the same embedded and flight-control code run across host and target — Linux/POSIX for SITL and HIL, NuttX on real hardware. Threads, synchronization, timing, and message queues sit behind one stable API with a thin per-backend layer, so bringing up a new RTOS (Zephyr, FreeRTOS, …) means writing one backend, not touching your app.
