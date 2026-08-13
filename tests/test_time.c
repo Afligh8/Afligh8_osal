@@ -21,7 +21,7 @@ int main(void)
     printf("M1 time: AOS_TimeGet\n\n");
     AOS_Init();
 
-    CHECK("AOS-TIME-001",  "NULL -> INVALID_POINTER", AOS_TimeGet(NULL) == AOS_INVALID_POINTER);
+    CHECK("AOS-TIME-001",  "NULL -> INVALID_POINTER", AOS_TimeGet(NULL) == AOS_ERR_INVALID_POINTER);
     CHECK("AOS-TIME-002",  "valid -> SUCCESS",        AOS_TimeGet(&t0)  == AOS_SUCCESS);
 
     nanosleep(&nap, NULL);
