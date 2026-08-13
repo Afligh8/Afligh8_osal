@@ -13,12 +13,21 @@ set(AOS_SOURCES
     src/os/${AOS_BACKEND}/src/aos_${AOS_BACKEND}.c
     src/os/${AOS_BACKEND}/src/aos_status.c
     src/os/${AOS_BACKEND}/src/aos_task.c
+    src/os/${AOS_BACKEND}/src/aos_mutex.c
 )
 
 add_library(aos_osal STATIC ${AOS_SOURCES})
 
-target_include_directories(aos_osal PUBLIC src/include )
+target_include_directories(aos_osal
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/include
+
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/os/${AOS_BACKEND}/include
+)
+
 find_package(Threads REQUIRED)
+
 target_link_libraries(aos_osal PUBLIC Threads::Threads)
 
 enable_testing()
@@ -32,4 +41,5 @@ endfunction()
 aos_add_test(test_core) 
 aos_add_test(test_time) 
 aos_add_test(test_task) 
+aos_add_test(test_mutex)
 

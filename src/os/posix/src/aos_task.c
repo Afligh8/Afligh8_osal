@@ -163,8 +163,14 @@ static int32_t AOS_PosixConfigureRtPolicy(void)
 #endif
 }
 
+static bool posix_task_module_initialized = false;
+
 int32_t AOS_PosixTaskInit(void)
 {
+    if (posix_task_module_initialized) {
+        return AOS_SUCCESS;
+    }
+
     int rc;
 
     pthread_mutex_lock(&g_task_lock);
@@ -195,32 +201,11 @@ int32_t AOS_PosixTaskInit(void)
     pthread_mutex_lock(&g_task_lock);
     g_task_module_initialized = true;
     pthread_mutex_unlock(&g_task_lock);
+
+    posix_task_module_initialized = true;
     return AOS_SUCCESS;
 }
 
-// static int32_t AOS_PosixValidateTaskIdLocked(aos_id_t task_id, aos_posix_task_slot_t **out_slot)
-// {
-//     uint16_t index;
-//     aos_posix_task_slot_t *slot;
-
-//     if (AOS_IdType(task_id) != AOS_MAX_TASKS) {
-//         return AOS_ERR_INVALID_ID;
-//     }
-
-//     index = AOS_IdIndex(task_id);
-//     if (index >= AOS_MAX_TASKS) {
-//         return AOS_ERR_INVALID_ID;
-//     }
-
-
-//     slot = &g_task_pool[index];
-//     if (!slot->in_use || slot->id != task_id || slot->serial != AOS_IdSerial(task_id)) {
-//         return AOS_ERR_INVALID_ID;
-//     }
-
-//     *out_slot = slot;
-//     return AOS_SUCCESS;
-// }
 
 static int32_t AOS_PosixValidateTaskIdLocked(
     aos_id_t task_id,
