@@ -15,6 +15,8 @@ const char *AOS_StrError(int32_t code)
     case AOS_ERR_INVALID_PARAM:    return "AOS_ERR_INVALID_PARAM";
     case AOS_ERR_CREATION_FAILED:  return "AOS_ERR_CREATION_FAILED";
     case AOS_ERR_TIMEOUT:          return "AOS_ERR_TIMEOUT";
+    case AOS_ERR_BUSY:             return "AOS_ERR_BUSY";
+    case AOS_ERR_INVALID_STATE:    return "AOS_ERR_INVALID_STATE";
     default:                       return "AOS_ERR_UNKNOWN";
     }
 }
