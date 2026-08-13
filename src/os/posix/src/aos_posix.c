@@ -1,33 +1,42 @@
-/*
- * aos_posix.c — POSIX backend for AOS OSAL.
- * Portable to any POSIX OS (Linux now, NuttX later). Grows one module at a time.
- *
- * The feature-test macro below is required under -std=c99: it tells glibc to
- * expose the POSIX.1-2008 functions (clock_gettime, CLOCK_MONOTONIC). Without it,
- * strict C99 hides them and you get implicit-declaration warnings/errors.
-*/
-
-
 #include "aos_osal.h"
+#include <pthread.h>
+#include <stdbool.h>
 #include <time.h>
 
-int32_t AOS_Init(void){
+/* Private POSIX task-module initializer implemented in aos_task.c. */
+int32_t AOS_PosixTaskInit(void);
 
-    return AOS_SUCCESS;
+static pthread_mutex_t g_init_lock = PTHREAD_MUTEX_INITIALIZER;
+static bool g_is_initialized = false;
+
+int32_t AOS_Init(void)
+{
+    int32_t ret = AOS_SUCCESS;
+
+    pthread_mutex_lock(&g_init_lock);
+    if (!g_is_initialized)
+    {
+        ret = AOS_PosixTaskInit();
+        if (ret == AOS_SUCCESS)
+        {
+            g_is_initialized = true;
+        }
+    }
+    pthread_mutex_unlock(&g_init_lock);
+
+    return ret;
 }
 
 int32_t AOS_TimeGet(aos_time_t *now_us){
 
     struct timespec ts;
 
-    if (now_us == NULL)
-    {
-        return AOS_INVALID_POINTER;
+    if (now_us == NULL){
+        return AOS_ERR_INVALID_POINTER;
     }
     
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
-    {
-        return AOS_ERROR;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0){
+        return AOS_ERR_GENERIC;
     }
     
     *now_us = (aos_time_t)ts.tv_sec * 1000000 + (aos_time_t)(ts.tv_nsec / 1000);

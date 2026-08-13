@@ -10,22 +10,22 @@ static int fails = 0;
         if (!_ok) fails++;                                          \
     } while (0)
  
-int main(){
+int main(void){
+
+    aos_id_t id = AOS_IdPack(AOS_TYPE_MUTEX, 1, 0);    
     
     printf("M0 core: ticket round-trip + init\n\n");
 
-    aos_id_t id = aos_id_pack(AOS_TYPE_MUTEX, 1, 0);
+    CHECK("AOS-CORE-000",  "real ticket is non-zero", id != AOS_ID_NONE);
+    CHECK("AOS-CORE-001a", "type round-trips", AOS_IdType(id) == AOS_TYPE_MUTEX);
+    CHECK("AOS-CORE-001b", "serial round-trips", AOS_IdSerial(id) == 1);
+    CHECK("AOS-CORE-001c", "index round-trips", AOS_IdIndex(id) == 0);
+    CHECK("AOS-CORE-002",  "NONE has type NONE", AOS_IdType(AOS_ID_NONE) == AOS_TYPE_NONE);
+    CHECK("AOS-CORE-003",  "init succeeds", AOS_Init() == AOS_SUCCESS);
+    CHECK("AOS-CORE-004",  "init is idempotent", AOS_Init() == AOS_SUCCESS);
  
-    CHECK("AOS-CORE-000",  "real ticket is non-zero",  id != AOS_ID_NONE);
-    CHECK("AOS-CORE-001a", "type round-trips",         aos_id_type(id)   == AOS_TYPE_MUTEX);
-    CHECK("AOS-CORE-001b", "serial round-trips",       aos_id_serial(id) == 1);
-    CHECK("AOS-CORE-001c", "index round-trips",        aos_id_index(id)  == 0);
-    CHECK("AOS-CORE-002",  "NONE has type NONE",       aos_id_type(AOS_ID_NONE) == AOS_TYPE_NONE);
-    CHECK("AOS-CORE-003",  "init succeeds",            AOS_Init() == AOS_SUCCESS);
- 
-    printf("  decoder: %d -> %s\n", (int)AOS_INVALID_POINTER, aos_strerror(AOS_INVALID_POINTER));
-
-
+    printf("  decoder: %d -> %s\n", (int)AOS_ERR_INVALID_POINTER, AOS_StrError(AOS_ERR_INVALID_POINTER));
     printf(fails ? "\n%d FAILED\n" : "\nALL PASSED\n", fails);
+    
     return fails ? 1 : 0;
 }
