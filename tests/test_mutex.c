@@ -489,7 +489,6 @@ int main(void)
         return 27;
     }
 
-
     puts("ALL MUTEX TESTS PASSED");
 
     return 0;

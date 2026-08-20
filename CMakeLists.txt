@@ -38,6 +38,21 @@ function(aos_add_test name)
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
+# linux...
+if(AOS_BACKEND STREQUAL "posix"
+   AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+    aos_add_test(test_mutex_pi_posix)
+
+    set_tests_properties(
+        test_mutex_pi_posix
+        PROPERTIES
+            SKIP_RETURN_CODE 77
+    )
+
+endif()
+# linux ...
+
 aos_add_test(test_core) 
 aos_add_test(test_time) 
 aos_add_test(test_task) 
