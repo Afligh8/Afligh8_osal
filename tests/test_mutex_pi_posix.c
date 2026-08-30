@@ -15,7 +15,7 @@
 #define PI_PRIORITY_MEDIUM ((aos_task_priority_t)(16u))
 #define PI_PRIORITY_LOW ((aos_task_priority_t)(24u))
 
-static aos_id_t g_pi_mutex = AOS_ID_NONE;
+static aos_mutex_t g_pi_mutex = AOS_MUTEX_NONE;
 
 
 /*
@@ -241,11 +241,11 @@ static void high_task(void *arg)
 
 int main(void)
 {
-    aos_id_t low_id = AOS_ID_NONE;
+    aos_task_t low_id = AOS_TASK_NONE;
 
-    aos_id_t medium_id = AOS_ID_NONE;
+    aos_task_t medium_id = AOS_TASK_NONE;
 
-    aos_id_t high_id = AOS_ID_NONE;
+    aos_task_t high_id = AOS_TASK_NONE;
 
     int32_t status;
 

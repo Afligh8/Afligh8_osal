@@ -7,7 +7,7 @@
 #include <semaphore.h>
 
 typedef struct {
-    aos_id_t mutex_id;
+    aos_mutex_t mutex_id;
     sem_t done;
     int32_t result;
 } mutex_test_context_t;
@@ -58,7 +58,7 @@ static void wrong_owner_unlock(void *arg)
 
 static void timed_waiter(void *arg)
 {
-    aos_id_t mutex_id = *(aos_id_t *)arg;
+    aos_mutex_t mutex_id = *(aos_mutex_t *)arg;
 
     /*
      * Store the actual OSAL result so the parent
@@ -91,8 +91,8 @@ static void timed_waiter(void *arg)
 
 static void normal_waiter(void *arg)
 {
-    aos_id_t mutex_id =
-        *(aos_id_t *)arg;
+    aos_mutex_t mutex_id =
+        *(aos_mutex_t *)arg;
 
 
     if (AOS_MutexLock(
@@ -109,8 +109,8 @@ static void normal_waiter(void *arg)
 
 int main(void)
 {
-    aos_id_t mutex_id = AOS_ID_NONE;
-    aos_id_t task_id  = AOS_ID_NONE;
+    aos_mutex_t mutex_id = AOS_MUTEX_NONE;
+    aos_task_t  task_id  = AOS_TASK_NONE;
 
     mutex_test_context_t ctx;
 
@@ -178,7 +178,7 @@ int main(void)
     /*
      * Verify packed object type.
      */
-    if (AOS_IdType(mutex_id) != AOS_TYPE_MUTEX)
+    if (AOS_IdType(mutex_id.id) != AOS_TYPE_MUTEX)
     {
         return 4;
     }

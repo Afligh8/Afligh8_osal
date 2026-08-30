@@ -15,8 +15,8 @@ static volatile int32_t g_worker_result = AOS_ERR_GENERIC;
 
 static void blocking_waiter(void *arg)
 {
-    aos_id_t sem_id =
-        *(aos_id_t *)arg;
+    aos_sem_t sem_id =
+        *(aos_sem_t *)arg;
 
     g_worker_started = true;
 
@@ -33,9 +33,9 @@ static void blocking_waiter(void *arg)
 
 int main(void)
 {
-    aos_id_t sem_id      = AOS_ID_NONE;
-    aos_id_t other_sem_id = AOS_ID_NONE;
-    aos_id_t task_id     = AOS_ID_NONE;
+    aos_sem_t sem_id      = AOS_SEM_NONE;
+    aos_sem_t other_sem_id = AOS_SEM_NONE;
+    aos_task_t task_id     = AOS_TASK_NONE;
 
     aos_sem_info_t info;
 
@@ -129,7 +129,7 @@ int main(void)
         return 8;
     }
 
-    if (AOS_IdType(sem_id) != AOS_TYPE_BINSEM)
+    if (AOS_IdType(sem_id.id) != AOS_TYPE_BINSEM)
     {
         return 9;
     }
