@@ -32,13 +32,13 @@ int32_t AOS_Init(void)
             ret = AOS_PosixMutexInit();
         }
 
-        // if (ret == AOS_SUCCESS)
-        // {
-        //     /*
-        //      * Initialize the static POSIX semaphore subsystem.
-        //      */
-        //     ret = AOS_PosixBinSemInit();
-        // }
+        if (ret == AOS_SUCCESS)
+        {
+            /*
+             * Initialize the static POSIX semaphore subsystem.
+             */
+            ret = AOS_PosixBinSemInit();
+        }
 
         // if (ret == AOS_SUCCESS)
         // {

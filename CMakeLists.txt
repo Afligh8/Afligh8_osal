@@ -14,6 +14,7 @@ set(AOS_SOURCES
     src/os/${AOS_BACKEND}/src/aos_status.c
     src/os/${AOS_BACKEND}/src/aos_task.c
     src/os/${AOS_BACKEND}/src/aos_mutex.c
+    src/os/${AOS_BACKEND}/src/aos_sem.c
 )
 
 add_library(aos_osal STATIC ${AOS_SOURCES})
@@ -53,8 +54,9 @@ if(AOS_BACKEND STREQUAL "posix"
 endif()
 # linux ...
 
-aos_add_test(test_core) 
-aos_add_test(test_time) 
-aos_add_test(test_task) 
+aos_add_test(test_core)
+aos_add_test(test_time)
+aos_add_test(test_task)
 aos_add_test(test_mutex)
+aos_add_test(test_sem)
 
