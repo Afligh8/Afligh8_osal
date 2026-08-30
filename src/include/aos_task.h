@@ -48,6 +48,27 @@ void AOS_TaskExit(void);
 
 int32_t AOS_TaskDelete(aos_id_t task_id);
 
+/*
+ * Block until the target task exits -- either by returning from its
+ * entry function or by calling AOS_TaskExit() -- without forcing it to
+ * terminate.
+ *
+ * The task's AOS id remains valid after a successful Join: exactly like
+ * a mutex or semaphore, the caller must still call AOS_TaskDelete()
+ * afterward to release the slot for reuse. AOS_TaskDelete() detects a
+ * task that was already joined and skips re-joining it.
+ *
+ * A given task must not be joined by more than one caller, and must not
+ * be concurrently joined and deleted from different threads -- exactly
+ * the restriction POSIX places on pthread_join(). A task joining itself
+ * returns AOS_ERR_INVALID_PARAM; joining a task a second time (or after
+ * it has already been deleted) returns AOS_ERR_INVALID_STATE /
+ * AOS_ERR_INVALID_ID respectively.
+ *
+ * ISR-safe: no.  blocking: yes.
+ */
+int32_t AOS_TaskJoin(aos_id_t task_id);
+
 int32_t AOS_TaskDelay(uint32_t ms);
 
 int32_t AOS_TaskYield(void);
