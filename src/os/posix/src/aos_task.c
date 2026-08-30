@@ -20,6 +20,16 @@ typedef struct {
     aos_task_state_t    state;
     uint8_t             serial;
     bool                in_use;
+
+    /*
+     * Set the instant either AOS_TaskJoin() or AOS_TaskDelete() commits
+     * to reaping this thread (pthread_join()'d, possibly preceded by
+     * pthread_cancel()). Claimed atomically under g_task_lock so the two
+     * entry points can never both call pthread_join() on the same
+     * pthread_t -- that would be undefined behaviour.
+     */
+    bool                joined;
+
     char                name[AOS_MAX_NAME];
 } aos_posix_task_slot_t;
 
@@ -416,6 +426,7 @@ int32_t AOS_TaskCreate(aos_id_t *task_id,
     slot->priority = priority;
     slot->state = AOS_TASK_STATE_STARTING;
     slot->in_use = true;
+    slot->joined = false;
     memcpy(slot->name, name, name_len + 1u);
     *task_id = slot->id;
 
@@ -451,8 +462,9 @@ int32_t AOS_TaskDelete(aos_id_t task_id)
     aos_posix_task_slot_t *slot;
     pthread_t thread;
     int32_t status;
-    int rc_cancel;
-    int rc_join;
+    bool need_reap;
+    int rc_cancel = 0;
+    int rc_join = 0;
 
     pthread_mutex_lock(&g_task_lock);
     status = AOS_PosixValidateTaskIdLocked(task_id, &slot);
@@ -461,25 +473,41 @@ int32_t AOS_TaskDelete(aos_id_t task_id)
         return status;
     }
     thread = slot->thread;
+
+    /*
+     * Claim the reap step atomically. If AOS_TaskJoin() already claimed
+     * it, that Join has necessarily already returned by the time a
+     * caller sequences Delete() after it (concurrent Join+Delete on the
+     * same id from different threads is out of contract -- see
+     * AOS_TaskJoin()'s doc comment), so it's safe to skip straight to
+     * freeing the slot below.
+     */
+    need_reap = !slot->joined;
+    slot->joined = true;
+
     pthread_mutex_unlock(&g_task_lock);
 
     if (pthread_equal(pthread_self(), thread)) {
         return AOS_ERR_INVALID_PARAM;
     }
 
-    rc_cancel = pthread_cancel(thread);
-    rc_join = pthread_join(thread, NULL);
+    if (need_reap) {
 
-    if (rc_join != 0 && rc_join != ESRCH) {
-        return AOS_ERR_GENERIC;
-    }
-    if (rc_cancel != 0 && rc_cancel != ESRCH) {
-        return AOS_ERR_GENERIC;
+        rc_cancel = pthread_cancel(thread);
+        rc_join = pthread_join(thread, NULL);
+
+        if (rc_join != 0 && rc_join != ESRCH) {
+            return AOS_ERR_GENERIC;
+        }
+        if (rc_cancel != 0 && rc_cancel != ESRCH) {
+            return AOS_ERR_GENERIC;
+        }
     }
 
     pthread_mutex_lock(&g_task_lock);
     if (slot->in_use && slot->id == task_id) {
         slot->in_use = false;
+        slot->joined = false;
         slot->state = AOS_TASK_STATE_UNUSED;
         slot->entry = NULL;
         slot->arg = NULL;
@@ -488,6 +516,51 @@ int32_t AOS_TaskDelete(aos_id_t task_id)
         slot->name[0] = '\0';
     }
     pthread_mutex_unlock(&g_task_lock);
+
+    return AOS_SUCCESS;
+}
+
+int32_t AOS_TaskJoin(aos_id_t task_id)
+{
+    aos_posix_task_slot_t *slot;
+    pthread_t thread;
+    int32_t status;
+    int rc;
+
+    pthread_mutex_lock(&g_task_lock);
+
+    status = AOS_PosixValidateTaskIdLocked(task_id, &slot);
+    if (status != AOS_SUCCESS) {
+        pthread_mutex_unlock(&g_task_lock);
+        return status;
+    }
+
+    if (slot->joined) {
+        pthread_mutex_unlock(&g_task_lock);
+        return AOS_ERR_INVALID_STATE;
+    }
+
+    thread = slot->thread;
+
+    if (pthread_equal(pthread_self(), thread)) {
+        pthread_mutex_unlock(&g_task_lock);
+        return AOS_ERR_INVALID_PARAM;
+    }
+
+    /*
+     * Claim the reap step before releasing the lock and blocking, so a
+     * concurrent second Join (or a Delete sequenced after this one
+     * returns) cannot also call pthread_join() on this thread id.
+     */
+    slot->joined = true;
+
+    pthread_mutex_unlock(&g_task_lock);
+
+    rc = pthread_join(thread, NULL);
+
+    if (rc != 0) {
+        return AOS_ERR_GENERIC;
+    }
 
     return AOS_SUCCESS;
 }
