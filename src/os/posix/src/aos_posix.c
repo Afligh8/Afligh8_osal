@@ -41,13 +41,13 @@ int32_t AOS_Init(void)
             ret = AOS_PosixBinSemInit();
         }
 
-        // if (ret == AOS_SUCCESS)
-        // {
-        //     /*
-        //      * Initialize the static POSIX memory pool subsystem.
-        //      */
-        //     ret = AOS_PosixMempoolInit();
-        // }
+        if (ret == AOS_SUCCESS)
+        {
+            /*
+             * Initialize the static POSIX memory pool subsystem.
+             */
+            ret = AOS_PosixMempoolInit();
+        }
     
         
         /* The whole OSAL is considered initialized only when
