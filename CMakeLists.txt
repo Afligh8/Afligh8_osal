@@ -51,6 +51,28 @@ if(AOS_BACKEND STREQUAL "posix"
             SKIP_RETURN_CODE 77
     )
 
+    # Separate OSAL build with AOS_CONFIG_POSIX_RT_REQUIRED=1, used only
+    # to exercise AOS_PosixConfigureRtPolicy()'s "RT is mandatory" branch
+    # (AOS_ERR_PERMISSION_DENIED / AOS_ERR_UNSUPPORTED wiring). The
+    # default aos_osal target keeps AOS_CONFIG_POSIX_RT_REQUIRED at its
+    # default (0), so that branch would otherwise never be compiled or
+    # run by anything in this test suite.
+    add_library(aos_osal_rt_required STATIC ${AOS_SOURCES})
+
+    target_include_directories(aos_osal_rt_required
+        PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/include
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/os/${AOS_BACKEND}/include
+    )
+
+    target_compile_definitions(aos_osal_rt_required PRIVATE AOS_CONFIG_POSIX_RT_REQUIRED=1)
+    target_link_libraries(aos_osal_rt_required PUBLIC Threads::Threads)
+
+    add_executable(test_rt_required tests/test_rt_required.c)
+    target_link_libraries(test_rt_required PRIVATE aos_osal_rt_required)
+    add_test(NAME test_rt_required COMMAND test_rt_required)
+
 endif()
 # linux ...
 

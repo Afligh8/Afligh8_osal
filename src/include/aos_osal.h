@@ -130,7 +130,40 @@ typedef struct { aos_id_t id; } aos_sem_t;
  *   ISR-safe: no (call once at startup).  blocking: no.
  */
 int32_t AOS_Init(void);
- 
+
+/*
+ * Capability bits. NOT every AOS backend/deployment offers the same
+ * guarantees, so application code that cares must ask rather than
+ * assume -- e.g. a dev/CI build running without elevated privileges
+ * will not have AOS_CAP_RT_SCHEDULING even though the exact same binary
+ * would on a properly configured target.
+ *
+ * Two genuinely different reasons a bit can be clear:
+ *   - Fixed by this backend/build (e.g. a NuttX board built with
+ *     CONFIG_PRIORITY_INHERITANCE off): same answer on every run.
+ *   - Environment-dependent even on an unchanged binary (e.g. POSIX RT
+ *     scheduling needs a privilege the process may or may not have this
+ *     time it was launched): can differ run to run.
+ * AOS_GetCapabilities() reports the actual outcome either way -- callers
+ * don't need to know or care which reason applies.
+ */
+enum {
+    AOS_CAP_RT_SCHEDULING    = (1u << 0), /* SCHED_FIFO/RR usable right now, so task priority actually orders execution */
+    AOS_CAP_PRIORITY_INHERIT = (1u << 1), /* AOS_MutexCreate()'d mutexes actually get priority inheritance */
+    AOS_CAP_TIMED_WAIT       = (1u << 2), /* AOS_MutexTimedLock/AOS_SemTimedWait are backed by a real bounded wait */
+    AOS_CAP_MONOTONIC_CLOCK  = (1u << 3)  /* AOS_TimeGet is backed by a real monotonic clock, not a wall-clock fallback */
+};
+
+/*
+ * AOS_GetCapabilities — report which optional guarantees this
+ * initialized OSAL instance actually provides, as an OR of the
+ * AOS_CAP_* bits above.
+ *   caps_out : out; receives the bitmask. NULL -> AOS_ERR_INVALID_POINTER.
+ *   returns  : AOS_SUCCESS, or AOS_ERR_GENERIC if called before AOS_Init().
+ *   ISR-safe: no.  blocking: no.
+ */
+int32_t AOS_GetCapabilities(uint32_t *caps_out);
+
 /* time */
 typedef int64_t aos_time_t;               /* microseconds, monotonic */
 
