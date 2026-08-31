@@ -41,13 +41,31 @@ int32_t AOS_Init(void)
             ret = AOS_PosixBinSemInit();
         }
 
-        // if (ret == AOS_SUCCESS)
-        // {
-        //     /*
-        //      * Initialize the static POSIX memory pool subsystem.
-        //      */
-        //     ret = AOS_PosixMempoolInit();
-        // }
+        /*
+         * No memory pool subsystem here, deliberately -- this is a
+         * DEFERRED decision, not a rejected one.
+         *
+         * AFlight8's flight-control data is small, strongly typed, and
+         * predictable (imu, gps, vehicle_state, attitude_setpoint,
+         * actuator_output, ...), including processed-vision results
+         * rather than raw camera frames. That data fits a uORB-style
+         * topic-owned storage model: each Pub/Sub topic owns its own
+         * fixed-size storage (and, where needed, a fixed-depth queue),
+         * allocated at startup. A generic mempool/buffer-pool is not a
+         * dependency of the OSAL or of the initial Pub/Sub
+         * implementation under that model.
+         *
+         * Revisit only if a concrete subsystem actually needs
+         * variable-size or explicit ownership-transfer buffers -- large
+         * vision buffers, SD/logging buffers, telemetry/networking
+         * packets, DSP buffers, or another (possibly non-flight) project
+         * building on this OSAL. If that need materializes, prefer a
+         * preallocated fixed-block or size-binned pool with explicit
+         * allocate/use/release ownership, predictable failure on
+         * exhaustion, and no silent malloc() fallback -- added as its
+         * own independent service, not by turning Pub/Sub itself into a
+         * generic allocator.
+         */
     
         
         /* The whole OSAL is considered initialized only when
