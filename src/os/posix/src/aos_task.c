@@ -112,7 +112,13 @@ static int32_t AOS_PosixConfigureRtPolicy(void)
         g_rt_priority_max = rr_max;
     } else {
 #if AOS_CONFIG_POSIX_RT_REQUIRED
-        return AOS_ERR_CREATION_FAILED;
+        /*
+         * Not a privilege problem: neither SCHED_FIFO nor SCHED_RR on
+         * this platform offers enough distinct priority levels to map
+         * AOS_CONFIG_TASK_PRIORITY_LEVELS onto. No process could ever
+         * satisfy this by acquiring more permissions.
+         */
+        return AOS_ERR_UNSUPPORTED;
 #else
         g_rt_enabled = false;
         return AOS_SUCCESS;
@@ -161,6 +167,21 @@ static int32_t AOS_PosixConfigureRtPolicy(void)
     }
 
 #if AOS_CONFIG_POSIX_RT_REQUIRED
+    /*
+     * rc is the pthread-style error number straight from
+     * pthread_setschedparam() (not errno) -- EPERM means the process
+     * lacks the privilege (e.g. CAP_SYS_NICE / an rtprio ulimit) to use
+     * this scheduling policy, which is exactly what AOS_ERR_PERMISSION_
+     * DENIED exists to name precisely instead of folding it into a
+     * generic creation failure. EINVAL means the platform rejected the
+     * policy/priority combination outright, i.e. it doesn't support it.
+     */
+    if (rc == EPERM) {
+        return AOS_ERR_PERMISSION_DENIED;
+    }
+    if (rc == EINVAL) {
+        return AOS_ERR_UNSUPPORTED;
+    }
     return AOS_ERR_CREATION_FAILED;
 #else
     g_rt_enabled = false;
@@ -171,6 +192,11 @@ static int32_t AOS_PosixConfigureRtPolicy(void)
 #endif
     return AOS_SUCCESS;
 #endif
+}
+
+bool AOS_PosixTaskIsRtEnabled(void)
+{
+    return g_rt_enabled;
 }
 
 static bool posix_task_module_initialized = false;
