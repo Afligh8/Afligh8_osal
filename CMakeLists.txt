@@ -79,6 +79,7 @@ endif()
 aos_add_test(test_core)
 aos_add_test(test_time)
 aos_add_test(test_task)
+aos_add_test(test_task_delay)
 aos_add_test(test_mutex)
 aos_add_test(test_sem)
 
