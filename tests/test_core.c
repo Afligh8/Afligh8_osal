@@ -1,5 +1,6 @@
 #include "aos_osal.h"
 #include <stdio.h>
+#include <string.h>
 
 static int fails = 0;
 
@@ -23,7 +24,13 @@ int main(void){
     CHECK("AOS-CORE-002",  "NONE has type NONE", AOS_IdType(AOS_ID_NONE) == AOS_TYPE_NONE);
     CHECK("AOS-CORE-003",  "init succeeds", AOS_Init() == AOS_SUCCESS);
     CHECK("AOS-CORE-004",  "init is idempotent", AOS_Init() == AOS_SUCCESS);
- 
+    CHECK("AOS-CORE-005",  "permission denied decodes",
+          strcmp(AOS_StrError(AOS_ERR_PERMISSION_DENIED), "AOS_ERR_PERMISSION_DENIED") == 0);
+    CHECK("AOS-CORE-006",  "unsupported decodes",
+          strcmp(AOS_StrError(AOS_ERR_UNSUPPORTED), "AOS_ERR_UNSUPPORTED") == 0);
+    CHECK("AOS-CORE-007",  "unknown code falls back",
+          strcmp(AOS_StrError(-12345), "AOS_ERR_UNKNOWN") == 0);
+
     printf("  decoder: %d -> %s\n", (int)AOS_ERR_INVALID_POINTER, AOS_StrError(AOS_ERR_INVALID_POINTER));
     printf(fails ? "\n%d FAILED\n" : "\nALL PASSED\n", fails);
     

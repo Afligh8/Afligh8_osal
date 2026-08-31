@@ -39,7 +39,10 @@ enum aos_status {
 
     AOS_ERR_TIMEOUT             = -16,    /* wait primitive timed out (any object) */
     AOS_ERR_BUSY                = -17,    /* object is busy (e.g. mutex) */
-    AOS_ERR_INVALID_STATE       = -18       /* object is in an invalid state for the requested operation */ 
+    AOS_ERR_INVALID_STATE       = -18,    /* object is in an invalid state for the requested operation */
+
+    AOS_ERR_PERMISSION_DENIED   = -19,    /* caller lacks the privilege this operation requires */
+    AOS_ERR_UNSUPPORTED         = -20     /* platform/backend does not support the requested feature */
 };
 
 /*
