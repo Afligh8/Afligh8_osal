@@ -31,6 +31,13 @@ find_package(Threads REQUIRED)
 
 target_link_libraries(aos_osal PUBLIC Threads::Threads)
 
+# Only build/register this repo's own tests when it's the top-level
+# project. When another project pulls this in as a dependency (e.g. via
+# FetchContent/add_subdirectory -- CMAKE_PROJECT_NAME is then that outer
+# project's name, not "aos_osal"), its ctest output shouldn't get
+# polluted with every test binary this OSAL ships internally.
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+
 enable_testing()
 
 function(aos_add_test name)
@@ -82,4 +89,6 @@ aos_add_test(test_task)
 aos_add_test(test_task_delay)
 aos_add_test(test_mutex)
 aos_add_test(test_sem)
+
+endif() # CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME
 
