@@ -60,10 +60,11 @@ const char *AOS_StrError(int32_t code);
  * longest usable name is (AOS_MAX_NAME - 1) = 19 characters. A name whose
  * strlen exceeds that yields AOS_ERR_NAME_TOO_LONG.
 */
-#define AOS_MAX_NAME     20
-#define AOS_MAX_TASKS     8
-#define AOS_MAX_MUTEXES   8
-#define AOS_MAX_SEMS      8
+#define AOS_MAX_NAME      20
+#define AOS_MAX_TASKS      8
+#define AOS_MAX_MUTEXES    8
+#define AOS_MAX_SEMS       8
+#define AOS_MAX_MEMPOOLS   8
  
 /* Opaque object id (ticket).
  * One uint32_t packs { type[31:24], serial[23:16], index[15:0] }.
@@ -79,10 +80,11 @@ typedef uint32_t aos_id_t;
 #define AOS_ID_NONE  ((aos_id_t)0)
 
 enum {
-    AOS_TYPE_NONE   = 0,
-    AOS_TYPE_TASK   = 1,
-    AOS_TYPE_MUTEX  = 2,
-    AOS_TYPE_BINSEM = 3
+    AOS_TYPE_NONE    = 0,
+    AOS_TYPE_TASK    = 1,
+    AOS_TYPE_MUTEX   = 2,
+    AOS_TYPE_BINSEM  = 3,
+    AOS_TYPE_MEMPOOL = 4
 };
 
 /* Id pack/unpack helpers — inline so every module and test shares one
@@ -117,10 +119,12 @@ static inline uint16_t AOS_IdIndex (aos_id_t id) { return (uint16_t)( id        
 typedef struct { aos_id_t id; } aos_task_t;
 typedef struct { aos_id_t id; } aos_mutex_t;
 typedef struct { aos_id_t id; } aos_sem_t;
+typedef struct { aos_id_t id; } aos_mempool_t;
 
-#define AOS_TASK_NONE   ((aos_task_t){ .id = AOS_ID_NONE })
-#define AOS_MUTEX_NONE  ((aos_mutex_t){ .id = AOS_ID_NONE })
-#define AOS_SEM_NONE    ((aos_sem_t){ .id = AOS_ID_NONE })
+#define AOS_TASK_NONE     ((aos_task_t){ .id = AOS_ID_NONE })
+#define AOS_MUTEX_NONE    ((aos_mutex_t){ .id = AOS_ID_NONE })
+#define AOS_SEM_NONE      ((aos_sem_t){ .id = AOS_ID_NONE })
+#define AOS_MEMPOOL_NONE  ((aos_mempool_t){ .id = AOS_ID_NONE })
  
 /* lifecycle 
  * AOS_Init — initialise the OSAL. Must be called once before any other AOS_*

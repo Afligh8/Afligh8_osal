@@ -15,6 +15,7 @@ set(AOS_SOURCES
     src/os/${AOS_BACKEND}/src/aos_task.c
     src/os/${AOS_BACKEND}/src/aos_mutex.c
     src/os/${AOS_BACKEND}/src/aos_sem.c
+    src/os/${AOS_BACKEND}/src/aos_mempool.c
 )
 
 add_library(aos_osal STATIC ${AOS_SOURCES})
@@ -82,4 +83,5 @@ aos_add_test(test_task)
 aos_add_test(test_task_delay)
 aos_add_test(test_mutex)
 aos_add_test(test_sem)
+aos_add_test(test_mempool)
 

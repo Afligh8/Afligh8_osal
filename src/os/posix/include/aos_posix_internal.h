@@ -8,6 +8,7 @@
 int32_t AOS_PosixTaskInit(void);
 int32_t AOS_PosixMutexInit(void);
 int32_t AOS_PosixBinSemInit(void);
+int32_t AOS_PosixMempoolInit(void);
 
 /*
  * Whether AOS_PosixConfigureRtPolicy() actually secured SCHED_FIFO/RR
