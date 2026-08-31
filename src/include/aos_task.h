@@ -35,7 +35,7 @@ typedef struct {
 } aos_task_info_t;
 
 
-int32_t AOS_TaskCreate(aos_id_t *task_id,
+int32_t AOS_TaskCreate(aos_task_t *task_id,
                        const char *name,
                        aos_task_entry_t entry,
                        void *arg,
@@ -46,7 +46,7 @@ int32_t AOS_TaskCreate(aos_id_t *task_id,
 
 void AOS_TaskExit(void);
 
-int32_t AOS_TaskDelete(aos_id_t task_id);
+int32_t AOS_TaskDelete(aos_task_t task_id);
 
 /*
  * Block until the target task exits -- either by returning from its
@@ -67,17 +67,17 @@ int32_t AOS_TaskDelete(aos_id_t task_id);
  *
  * ISR-safe: no.  blocking: yes.
  */
-int32_t AOS_TaskJoin(aos_id_t task_id);
+int32_t AOS_TaskJoin(aos_task_t task_id);
 
 int32_t AOS_TaskDelay(uint32_t ms);
 
 int32_t AOS_TaskYield(void);
 
-int32_t AOS_TaskSetPriority(aos_id_t task_id, aos_task_priority_t priority);
+int32_t AOS_TaskSetPriority(aos_task_t task_id, aos_task_priority_t priority);
 
-int32_t AOS_TaskGetId(aos_id_t *task_id);
+int32_t AOS_TaskGetId(aos_task_t *task_id);
 
-int32_t AOS_TaskGetInfo(aos_id_t task_id, aos_task_info_t *info);
+int32_t AOS_TaskGetInfo(aos_task_t task_id, aos_task_info_t *info);
 
 #ifdef __cplusplus
 }

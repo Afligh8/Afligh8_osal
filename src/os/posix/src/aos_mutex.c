@@ -136,7 +136,7 @@ static void AOS_PosixMutexReleaseReference(
 
 
 int32_t AOS_MutexCreate(
-        aos_id_t *mutex_id,
+        aos_mutex_t *mutex_id,
         const char *name,
         uint32_t flags)
 {
@@ -144,7 +144,7 @@ int32_t AOS_MutexCreate(
 
     aos_posix_mutex_slot_t *slot = NULL;
 
-    aos_id_t creator = AOS_ID_NONE;
+    aos_task_t creator = AOS_TASK_NONE;
 
     size_t name_length;
 
@@ -307,7 +307,7 @@ int32_t AOS_MutexCreate(
             slot->serial,
             index);
 
-    slot->creator = creator;
+    slot->creator = creator.id;
 
     slot->ref_count = 0u;
 
@@ -318,7 +318,7 @@ int32_t AOS_MutexCreate(
         name,
         name_length + 1u);
 
-    *mutex_id = slot->id;
+    mutex_id->id = slot->id;
 
     pthread_mutex_unlock(
         &g_mutex_table_lock);
@@ -327,7 +327,7 @@ int32_t AOS_MutexCreate(
 }
 
 int32_t AOS_MutexLock(
-    aos_id_t mutex_id)
+    aos_mutex_t mutex_id)
 {
     aos_posix_mutex_slot_t *slot;
 
@@ -337,7 +337,7 @@ int32_t AOS_MutexLock(
 
     status =
         AOS_PosixMutexAcquireReference(
-            mutex_id,
+            mutex_id.id,
             &slot);
 
     if (status != AOS_SUCCESS) {
@@ -365,7 +365,7 @@ int32_t AOS_MutexLock(
 }
 
 int32_t AOS_MutexTryLock(
-    aos_id_t mutex_id)
+    aos_mutex_t mutex_id)
 {
     aos_posix_mutex_slot_t *slot;
 
@@ -375,7 +375,7 @@ int32_t AOS_MutexTryLock(
 
     status =
         AOS_PosixMutexAcquireReference(
-            mutex_id,
+            mutex_id.id,
             &slot);
 
     if (status != AOS_SUCCESS) {
@@ -407,7 +407,7 @@ int32_t AOS_MutexTryLock(
 }
 
 int32_t AOS_MutexTimedLock(
-    aos_id_t mutex_id,
+    aos_mutex_t mutex_id,
     uint32_t timeout_ms)
 {
     aos_posix_mutex_slot_t *slot;
@@ -422,7 +422,7 @@ int32_t AOS_MutexTimedLock(
 
     status =
         AOS_PosixMutexAcquireReference(
-            mutex_id,
+            mutex_id.id,
             &slot);
 
     if (status != AOS_SUCCESS) {
@@ -484,7 +484,7 @@ int32_t AOS_MutexTimedLock(
 }
 
 int32_t AOS_MutexUnlock(
-    aos_id_t mutex_id)
+    aos_mutex_t mutex_id)
 {
     aos_posix_mutex_slot_t *slot;
 
@@ -497,7 +497,7 @@ int32_t AOS_MutexUnlock(
 
     status =
         AOS_PosixValidateMutexIdLocked(
-            mutex_id,
+            mutex_id.id,
             &slot);
 
     pthread_mutex_unlock(
@@ -529,7 +529,7 @@ int32_t AOS_MutexUnlock(
 }
 
 int32_t AOS_MutexDelete(
-    aos_id_t mutex_id)
+    aos_mutex_t mutex_id)
 {
     aos_posix_mutex_slot_t *slot;
 
@@ -542,7 +542,7 @@ int32_t AOS_MutexDelete(
 
     status =
         AOS_PosixValidateMutexIdLocked(
-            mutex_id,
+            mutex_id.id,
             &slot);
 
     if (status != AOS_SUCCESS) {
@@ -615,7 +615,7 @@ int32_t AOS_MutexDelete(
 }
 
 int32_t AOS_MutexGetInfo(
-    aos_id_t mutex_id,
+    aos_mutex_t mutex_id,
     aos_mutex_info_t *info)
 {
     aos_posix_mutex_slot_t *slot;
@@ -630,13 +630,13 @@ int32_t AOS_MutexGetInfo(
         &g_mutex_table_lock);
 
     status =
-        AOS_PosixValidateMutexIdLocked(mutex_id, &slot);
+        AOS_PosixValidateMutexIdLocked(mutex_id.id, &slot);
 
     if (status == AOS_SUCCESS) {
 
         memcpy(info->name, slot->name, AOS_MAX_NAME);
 
-        info->creator = slot->creator;
+        info->creator = (aos_task_t){ .id = slot->creator };
     }
 
     pthread_mutex_unlock( &g_mutex_table_lock);

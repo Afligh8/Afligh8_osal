@@ -38,7 +38,7 @@ typedef enum {
 typedef struct
 {
     char     name[AOS_MAX_NAME];
-    aos_id_t creator;
+    aos_task_t creator;
 } aos_sem_info_t;
 
 /*
@@ -59,7 +59,7 @@ typedef struct
  * ISR-safe: no.  blocking: no.
  */
 int32_t AOS_SemCreate(
-    aos_id_t *sem_id,
+    aos_sem_t *sem_id,
     const char *name,
     aos_sem_state_t initial_state,
     uint32_t flags);
@@ -79,7 +79,7 @@ int32_t AOS_SemCreate(
  * ISR-safe: no.  blocking: no.
  */
 int32_t AOS_SemDelete(
-    aos_id_t sem_id);
+    aos_sem_t sem_id);
 
 /*
  * Block indefinitely until the semaphore is posted, then consume it
@@ -88,7 +88,7 @@ int32_t AOS_SemDelete(
  * ISR-safe: no.  blocking: yes.
  */
 int32_t AOS_SemWait(
-    aos_id_t sem_id);
+    aos_sem_t sem_id);
 
 /*
  * Consume the semaphore only if it is already full.
@@ -102,7 +102,7 @@ int32_t AOS_SemWait(
  * ISR-safe: no.  blocking: no.
  */
 int32_t AOS_SemTryWait(
-    aos_id_t sem_id);
+    aos_sem_t sem_id);
 
 /*
  * Consume the semaphore, blocking for up to timeout_ms.
@@ -112,7 +112,7 @@ int32_t AOS_SemTryWait(
  * ISR-safe: no.  blocking: yes (bounded).
  */
 int32_t AOS_SemTimedWait(
-    aos_id_t sem_id,
+    aos_sem_t sem_id,
     uint32_t timeout_ms);
 
 /*
@@ -131,7 +131,7 @@ int32_t AOS_SemTimedWait(
  * against.  blocking: no.
  */
 int32_t AOS_SemPost(
-    aos_id_t sem_id);
+    aos_sem_t sem_id);
 
 /*
  * Obtain portable semaphore information.
@@ -139,7 +139,7 @@ int32_t AOS_SemPost(
  * ISR-safe: no.  blocking: no.
  */
 int32_t AOS_SemGetInfo(
-    aos_id_t sem_id,
+    aos_sem_t sem_id,
     aos_sem_info_t *info);
 
 #ifdef __cplusplus

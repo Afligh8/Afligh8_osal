@@ -357,7 +357,7 @@ static int AOS_PosixBuildThreadAttrs(pthread_attr_t *attr,
     return 0;
 }
 
-int32_t AOS_TaskCreate(aos_id_t *task_id,
+int32_t AOS_TaskCreate(aos_task_t *task_id,
                        const char *name,
                        aos_task_entry_t entry,
                        void *arg,
@@ -428,7 +428,7 @@ int32_t AOS_TaskCreate(aos_id_t *task_id,
     slot->in_use = true;
     slot->joined = false;
     memcpy(slot->name, name, name_len + 1u);
-    *task_id = slot->id;
+    task_id->id = slot->id;
 
     pthread_mutex_unlock(&g_task_lock);
 
@@ -438,7 +438,7 @@ int32_t AOS_TaskCreate(aos_id_t *task_id,
         slot->in_use = false;
         slot->state = AOS_TASK_STATE_UNUSED;
         pthread_mutex_unlock(&g_task_lock);
-        *task_id = AOS_ID_NONE;
+        *task_id = AOS_TASK_NONE;
         return (rc == EINVAL) ? AOS_ERR_INVALID_SIZE : AOS_ERR_CREATION_FAILED;
     }
 
@@ -450,24 +450,25 @@ int32_t AOS_TaskCreate(aos_id_t *task_id,
         slot->in_use = false;
         slot->state = AOS_TASK_STATE_UNUSED;
         pthread_mutex_unlock(&g_task_lock);
-        *task_id = AOS_ID_NONE;
+        *task_id = AOS_TASK_NONE;
         return AOS_ERR_CREATION_FAILED;
     }
 
     return AOS_SUCCESS;
 }
 
-int32_t AOS_TaskDelete(aos_id_t task_id)
+int32_t AOS_TaskDelete(aos_task_t task_id)
 {
     aos_posix_task_slot_t *slot;
     pthread_t thread;
+    aos_id_t raw_id = task_id.id;
     int32_t status;
     bool need_reap;
     int rc_cancel = 0;
     int rc_join = 0;
 
     pthread_mutex_lock(&g_task_lock);
-    status = AOS_PosixValidateTaskIdLocked(task_id, &slot);
+    status = AOS_PosixValidateTaskIdLocked(raw_id, &slot);
     if (status != AOS_SUCCESS) {
         pthread_mutex_unlock(&g_task_lock);
         return status;
@@ -505,7 +506,7 @@ int32_t AOS_TaskDelete(aos_id_t task_id)
     }
 
     pthread_mutex_lock(&g_task_lock);
-    if (slot->in_use && slot->id == task_id) {
+    if (slot->in_use && slot->id == raw_id) {
         slot->in_use = false;
         slot->joined = false;
         slot->state = AOS_TASK_STATE_UNUSED;
@@ -520,16 +521,17 @@ int32_t AOS_TaskDelete(aos_id_t task_id)
     return AOS_SUCCESS;
 }
 
-int32_t AOS_TaskJoin(aos_id_t task_id)
+int32_t AOS_TaskJoin(aos_task_t task_id)
 {
     aos_posix_task_slot_t *slot;
     pthread_t thread;
+    aos_id_t raw_id = task_id.id;
     int32_t status;
     int rc;
 
     pthread_mutex_lock(&g_task_lock);
 
-    status = AOS_PosixValidateTaskIdLocked(task_id, &slot);
+    status = AOS_PosixValidateTaskIdLocked(raw_id, &slot);
     if (status != AOS_SUCCESS) {
         pthread_mutex_unlock(&g_task_lock);
         return status;
@@ -598,7 +600,7 @@ int32_t AOS_TaskYield(void)
     return (sched_yield() == 0) ? AOS_SUCCESS : AOS_ERR_GENERIC;
 }
 
-int32_t AOS_TaskSetPriority(aos_id_t task_id, aos_task_priority_t priority)
+int32_t AOS_TaskSetPriority(aos_task_t task_id, aos_task_priority_t priority)
 {
     aos_posix_task_slot_t *slot;
     pthread_t thread;
@@ -610,7 +612,7 @@ int32_t AOS_TaskSetPriority(aos_id_t task_id, aos_task_priority_t priority)
     }
 
     pthread_mutex_lock(&g_task_lock);
-    status = AOS_PosixValidateTaskIdLocked(task_id, &slot);
+    status = AOS_PosixValidateTaskIdLocked(task_id.id, &slot);
     if (status != AOS_SUCCESS) {
         pthread_mutex_unlock(&g_task_lock);
         return status;
@@ -629,7 +631,7 @@ int32_t AOS_TaskSetPriority(aos_id_t task_id, aos_task_priority_t priority)
 }
 
 
-int32_t AOS_TaskGetId(aos_id_t *task_id)
+int32_t AOS_TaskGetId(aos_task_t *task_id)
 {
     void *value;
 
@@ -642,17 +644,17 @@ int32_t AOS_TaskGetId(aos_id_t *task_id)
 
     value = pthread_getspecific(g_task_key);
     if (value == NULL) {
-        *task_id = AOS_ID_NONE;
+        *task_id = AOS_TASK_NONE;
         return AOS_ERR_INVALID_ID;
     }
 
-    *task_id = (aos_id_t)(uintptr_t)value;
+    task_id->id = (aos_id_t)(uintptr_t)value;
     return AOS_SUCCESS;
 }
 
 
 int32_t AOS_TaskGetInfo(
-    aos_id_t task_id,
+    aos_task_t task_id,
     aos_task_info_t *info)
 {
     aos_posix_task_slot_t *slot;
@@ -666,7 +668,7 @@ int32_t AOS_TaskGetInfo(
 
     status =
         AOS_PosixValidateTaskIdLocked(
-            task_id,
+            task_id.id,
             &slot
         );
 

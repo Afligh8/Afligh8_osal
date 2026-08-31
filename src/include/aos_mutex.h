@@ -27,7 +27,7 @@ extern "C" {
 typedef struct
 {
     char  name[AOS_MAX_NAME];
-    aos_id_t creator;
+    aos_task_t creator;
 } aos_mutex_info_t;
 
 /*
@@ -45,7 +45,7 @@ typedef struct
  *     Reserved for future use. Pass AOS_MUTEX_FLAG_NONE.
  */
 int32_t AOS_MutexCreate(
-    aos_id_t *mutex_id,
+    aos_mutex_t *mutex_id,
     const char *name,
     uint32_t flags);
 
@@ -55,7 +55,7 @@ int32_t AOS_MutexCreate(
  * The mutex must not currently be owned or waited upon.
  */
 int32_t AOS_MutexDelete(
-    aos_id_t mutex_id);
+    aos_mutex_t mutex_id);
 
 /*
  * Acquire a mutex.
@@ -63,7 +63,7 @@ int32_t AOS_MutexDelete(
  * Blocks indefinitely until the mutex becomes available.
  */
 int32_t AOS_MutexLock(
-    aos_id_t mutex_id);
+    aos_mutex_t mutex_id);
 
 
 /*
@@ -76,7 +76,7 @@ int32_t AOS_MutexLock(
  *     AOS_ERR_INVALID_ID
  */
 int32_t AOS_MutexTryLock(
-    aos_id_t mutex_id);
+    aos_mutex_t mutex_id);
 
 
 /*
@@ -85,7 +85,7 @@ int32_t AOS_MutexTryLock(
  * timeout_ms is a relative timeout from the caller's point of view.
  */
 int32_t AOS_MutexTimedLock(
-    aos_id_t mutex_id,
+    aos_mutex_t mutex_id,
     uint32_t timeout_ms);
 
 
@@ -93,14 +93,14 @@ int32_t AOS_MutexTimedLock(
  * Release a mutex owned by the current task/thread.
  */
 int32_t AOS_MutexUnlock(
-    aos_id_t mutex_id);
+    aos_mutex_t mutex_id);
 
 
 /*
  * Obtain portable mutex information.
  */
 int32_t AOS_MutexGetInfo(
-    aos_id_t mutex_id,
+    aos_mutex_t mutex_id,
     aos_mutex_info_t *info);
 
 

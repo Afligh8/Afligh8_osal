@@ -7,7 +7,7 @@
 static volatile int g_value = 0;
 static volatile bool g_keep_running = true;
 
-static aos_id_t g_seen_id = AOS_ID_NONE;
+static aos_task_t g_seen_id = AOS_TASK_NONE;
 
 static volatile bool g_join_task_finished = false;
 
@@ -31,7 +31,7 @@ static void short_task(void *arg)
 
 static void self_join_task(void *arg)
 {
-    aos_id_t self_id = AOS_ID_NONE;
+    aos_task_t self_id = AOS_TASK_NONE;
 
     (void)arg;
 
@@ -69,7 +69,7 @@ static void test_task(void *arg)
 
 int main(void)
 {
-    aos_id_t task_id = AOS_ID_NONE;
+    aos_task_t task_id = AOS_TASK_NONE;
     aos_task_info_t info;
     int value = 42;
     int i;
@@ -96,8 +96,8 @@ int main(void)
     }
 
     if (g_value != 42) return 3;
-    if (g_seen_id != task_id) return 4;
-    if (AOS_IdType(task_id) != AOS_TYPE_TASK) return 5;
+    if (g_seen_id.id != task_id.id) return 4;
+    if (AOS_IdType(task_id.id) != AOS_TYPE_TASK) return 5;
     if (AOS_TaskGetInfo(task_id, &info) != AOS_SUCCESS) return 6;
     if (AOS_TaskSetPriority(task_id, AOS_TASK_PRIORITY_HIGHEST) != AOS_SUCCESS) return 7;
     if (AOS_TaskDelete(task_id) != AOS_SUCCESS) return 8;
@@ -108,7 +108,7 @@ int main(void)
      * TEST: AOS_TaskJoin waits for natural completion, not just for the
      * task to have merely started or to be somewhere mid-run.
      */
-    aos_id_t join_task_id = AOS_ID_NONE;
+    aos_task_t join_task_id = AOS_TASK_NONE;
 
     g_join_task_finished = false;
 

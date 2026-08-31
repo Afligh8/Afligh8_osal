@@ -162,14 +162,14 @@ static void AOS_PosixSemReleaseReference(
 
 
 int32_t AOS_SemCreate(
-    aos_id_t *sem_id,
+    aos_sem_t *sem_id,
     const char *name,
     aos_sem_state_t initial_state,
     uint32_t flags)
 {
     aos_posix_sem_slot_t *slot = NULL;
 
-    aos_id_t creator = AOS_ID_NONE;
+    aos_task_t creator = AOS_TASK_NONE;
 
     aos_id_t new_id;
 
@@ -282,7 +282,7 @@ int32_t AOS_SemCreate(
             slot->serial,
             index);
 
-    slot->creator = creator;
+    slot->creator = creator.id;
 
     slot->ref_count = 0u;
 
@@ -307,7 +307,7 @@ int32_t AOS_SemCreate(
         new_id,
         memory_order_release);
 
-    *sem_id = new_id;
+    sem_id->id = new_id;
 
     pthread_mutex_unlock(
         &g_sem_table_lock);
@@ -316,7 +316,7 @@ int32_t AOS_SemCreate(
 }
 
 int32_t AOS_SemWait(
-    aos_id_t sem_id)
+    aos_sem_t sem_id)
 {
     aos_posix_sem_slot_t *slot;
 
@@ -326,7 +326,7 @@ int32_t AOS_SemWait(
 
     status =
         AOS_PosixSemAcquireReference(
-            sem_id,
+            sem_id.id,
             &slot);
 
     if (status != AOS_SUCCESS) {
@@ -359,7 +359,7 @@ int32_t AOS_SemWait(
 }
 
 int32_t AOS_SemTryWait(
-    aos_id_t sem_id)
+    aos_sem_t sem_id)
 {
     aos_posix_sem_slot_t *slot;
 
@@ -370,7 +370,7 @@ int32_t AOS_SemTryWait(
 
     status =
         AOS_PosixSemAcquireReference(
-            sem_id,
+            sem_id.id,
             &slot);
 
     if (status != AOS_SUCCESS) {
@@ -407,7 +407,7 @@ int32_t AOS_SemTryWait(
 }
 
 int32_t AOS_SemTimedWait(
-    aos_id_t sem_id,
+    aos_sem_t sem_id,
     uint32_t timeout_ms)
 {
     aos_posix_sem_slot_t *slot;
@@ -423,7 +423,7 @@ int32_t AOS_SemTimedWait(
 
     status =
         AOS_PosixSemAcquireReference(
-            sem_id,
+            sem_id.id,
             &slot);
 
     if (status != AOS_SUCCESS) {
@@ -489,21 +489,23 @@ int32_t AOS_SemTimedWait(
 }
 
 int32_t AOS_SemPost(
-    aos_id_t sem_id)
+    aos_sem_t sem_id)
 {
     uint16_t index;
 
     aos_posix_sem_slot_t *slot;
 
+    aos_id_t raw_id = sem_id.id;
+
     aos_id_t observed_id;
 
     uint8_t expected;
 
-    if (AOS_IdType(sem_id) != AOS_TYPE_BINSEM) {
+    if (AOS_IdType(raw_id) != AOS_TYPE_BINSEM) {
         return AOS_ERR_INVALID_ID;
     }
 
-    index = AOS_IdIndex(sem_id);
+    index = AOS_IdIndex(raw_id);
 
     if (index >= AOS_MAX_SEMS) {
         return AOS_ERR_INVALID_ID;
@@ -521,7 +523,7 @@ int32_t AOS_SemPost(
             &slot->id,
             memory_order_acquire);
 
-    if (observed_id != sem_id) {
+    if (observed_id != raw_id) {
         return AOS_ERR_INVALID_ID;
     }
 
@@ -559,9 +561,11 @@ int32_t AOS_SemPost(
 }
 
 int32_t AOS_SemDelete(
-    aos_id_t sem_id)
+    aos_sem_t sem_id)
 {
     aos_posix_sem_slot_t *slot;
+
+    aos_id_t raw_id = sem_id.id;
 
     int32_t status;
 
@@ -573,7 +577,7 @@ int32_t AOS_SemDelete(
 
     status =
         AOS_PosixValidateSemIdLocked(
-            sem_id,
+            raw_id,
             &slot);
 
     if (status != AOS_SUCCESS) {
@@ -624,7 +628,7 @@ int32_t AOS_SemDelete(
 
         atomic_store_explicit(
             &slot->id,
-            sem_id,
+            raw_id,
             memory_order_release);
 
         pthread_mutex_unlock(
@@ -658,7 +662,7 @@ int32_t AOS_SemDelete(
 }
 
 int32_t AOS_SemGetInfo(
-    aos_id_t sem_id,
+    aos_sem_t sem_id,
     aos_sem_info_t *info)
 {
     aos_posix_sem_slot_t *slot;
@@ -673,13 +677,13 @@ int32_t AOS_SemGetInfo(
         &g_sem_table_lock);
 
     status =
-        AOS_PosixValidateSemIdLocked(sem_id, &slot);
+        AOS_PosixValidateSemIdLocked(sem_id.id, &slot);
 
     if (status == AOS_SUCCESS) {
 
         memcpy(info->name, slot->name, AOS_MAX_NAME);
 
-        info->creator = slot->creator;
+        info->creator = (aos_task_t){ .id = slot->creator };
     }
 
     pthread_mutex_unlock(&g_sem_table_lock);

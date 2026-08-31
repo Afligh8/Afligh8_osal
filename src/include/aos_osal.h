@@ -84,6 +84,10 @@ enum {
 
 /* Id pack/unpack helpers — inline so every module and test shares one
  * definition. All pure: ISR-safe, non-blocking, thread-safe.
+ *
+ * These operate on the raw packed ticket and are for OSAL backend
+ * implementations only. Application code never sees a bare aos_id_t —
+ * see the opaque per-kind handles below.
  */
 static inline aos_id_t AOS_IdPack(uint8_t type, uint8_t serial, uint16_t index)
 {
@@ -92,6 +96,28 @@ static inline aos_id_t AOS_IdPack(uint8_t type, uint8_t serial, uint16_t index)
 static inline uint8_t  AOS_IdType  (aos_id_t id) { return (uint8_t) ((id >> 24) & 0xFFu); }
 static inline uint8_t  AOS_IdSerial(aos_id_t id) { return (uint8_t) ((id >> 16) & 0xFFu); }
 static inline uint16_t AOS_IdIndex (aos_id_t id) { return (uint16_t)( id        & 0xFFFFu); }
+
+/*
+ * Opaque per-kind object handles.
+ *
+ * Each wraps a single packed aos_id_t ticket. The wrapper exists purely
+ * so the compiler rejects passing, say, a mutex handle where a task
+ * handle is expected -- a bare aos_id_t shared across all object kinds
+ * would compile silently either way and only fail at runtime deep in a
+ * backend's id validation. Application code should treat these as fully
+ * opaque; only OSAL backend code reaches into the `id` member.
+ *
+ * C has no operator== on structs, so compare handles as `a.id == b.id`,
+ * and use the AOS_*_NONE constants below instead of a bare 0/AOS_ID_NONE
+ * literal.
+ */
+typedef struct { aos_id_t id; } aos_task_t;
+typedef struct { aos_id_t id; } aos_mutex_t;
+typedef struct { aos_id_t id; } aos_sem_t;
+
+#define AOS_TASK_NONE   ((aos_task_t){ .id = AOS_ID_NONE })
+#define AOS_MUTEX_NONE  ((aos_mutex_t){ .id = AOS_ID_NONE })
+#define AOS_SEM_NONE    ((aos_sem_t){ .id = AOS_ID_NONE })
  
 /* lifecycle 
  * AOS_Init — initialise the OSAL. Must be called once before any other AOS_*
