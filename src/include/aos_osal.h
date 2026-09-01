@@ -63,7 +63,17 @@ const char *AOS_StrError(int32_t code);
 #define AOS_MAX_NAME     20
 #define AOS_MAX_TASKS     8
 #define AOS_MAX_MUTEXES   8
-#define AOS_MAX_SEMS      8
+/*
+ * Bumped from 8 (2026-09-01): AFlight8 Pub/Sub's blocking-wait design
+ * gives each subscriber its own semaphore (AFL_Publish() posts to
+ * every subscriber of a topic; a binary semaphore per subscriber lets
+ * AFL_Wait()/AFL_TimedWait() block instead of polling AFL_Check()).
+ * With several topics each having a handful of subscribers -- e.g.
+ * vehicle_state read by controller, guidance, logger, and telemetry at
+ * once -- 8 stopped being enough. A pure capacity constant, no
+ * behavior/API change.
+ */
+#define AOS_MAX_SEMS      16
  
 /* Opaque object id (ticket).
  * One uint32_t packs { type[31:24], serial[23:16], index[15:0] }.
