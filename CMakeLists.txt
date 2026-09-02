@@ -90,5 +90,14 @@ aos_add_test(test_task_delay)
 aos_add_test(test_mutex)
 aos_add_test(test_sem)
 
+# Phase 6 (Bench Manual): shared measurement infrastructure and its own
+# self-test. Individual bench/*.c executables (Exercise 1 onward) get
+# added here too as they land, each linking bench_stats.h's math.h
+# dependency (sqrt) via the m library.
+add_executable(test_bench_stats tests/bench/test_bench_stats.c)
+target_include_directories(test_bench_stats PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/bench)
+target_link_libraries(test_bench_stats PRIVATE aos_osal m)
+add_test(NAME test_bench_stats COMMAND test_bench_stats)
+
 endif() # CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME
 
