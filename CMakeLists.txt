@@ -99,5 +99,10 @@ target_include_directories(test_bench_stats PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/
 target_link_libraries(test_bench_stats PRIVATE aos_osal m)
 add_test(NAME test_bench_stats COMMAND test_bench_stats)
 
+add_executable(bench_task_lifecycle tests/bench/bench_task_lifecycle.c)
+target_include_directories(bench_task_lifecycle PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/bench)
+target_link_libraries(bench_task_lifecycle PRIVATE aos_osal m)
+add_test(NAME bench_task_lifecycle COMMAND bench_task_lifecycle)
+
 endif() # CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME
 
