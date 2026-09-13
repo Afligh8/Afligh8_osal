@@ -653,7 +653,20 @@ int32_t AOS_TaskSetPriority(aos_task_t task_id, aos_task_priority_t priority)
     }
     pthread_mutex_unlock(&g_task_lock);
 
-    return (rc == 0) ? AOS_SUCCESS : AOS_ERR_GENERIC;
+    if (rc == 0) {
+        return AOS_SUCCESS;
+    }
+    /*
+     * ESRCH means the target thread has already terminated at the
+     * kernel level -- the task legitimately ran to completion between
+     * the caller obtaining task_id and this call reaching
+     * pthread_setschedprio(). The AOS id/slot is still valid (it isn't
+     * freed until AOS_TaskJoin()/AOS_TaskDelete()), but there is no
+     * live thread left to reprioritize. That's a distinguishable,
+     * expected condition -- not an unspecified failure -- so it gets
+     * its own code rather than folding into AOS_ERR_GENERIC.
+     */
+    return (rc == ESRCH) ? AOS_ERR_INVALID_STATE : AOS_ERR_GENERIC;
 }
 
 

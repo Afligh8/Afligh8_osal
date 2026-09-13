@@ -104,5 +104,10 @@ target_include_directories(bench_task_lifecycle PRIVATE ${CMAKE_CURRENT_SOURCE_D
 target_link_libraries(bench_task_lifecycle PRIVATE aos_osal m)
 add_test(NAME bench_task_lifecycle COMMAND bench_task_lifecycle)
 
+add_executable(scheduling-priority tests/bench/scheduling-priority.c)
+target_include_directories(scheduling-priority PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests/bench)
+target_link_libraries(scheduling-priority PRIVATE aos_osal m)
+add_test(NAME scheduling-priority COMMAND scheduling-priority)
+
 endif() # CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME
 
