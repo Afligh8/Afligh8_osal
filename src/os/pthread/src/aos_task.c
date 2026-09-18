@@ -476,6 +476,17 @@ void AOS_TaskExit(void)
     pthread_exit(NULL);
 }
 
+static bool AOS_PosixDeadlineReached(const struct timespec *deadline)
+{
+    struct timespec now;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
+        return true;   /* cannot measure: do not spin forever */
+    }
+    return (now.tv_sec > deadline->tv_sec) ||
+           (now.tv_sec == deadline->tv_sec && now.tv_nsec >= deadline->tv_nsec);
+}
+
 int32_t AOS_TaskDelay(uint32_t ms)
 {
     struct timespec deadline;
@@ -492,11 +503,34 @@ int32_t AOS_TaskDelay(uint32_t ms)
         deadline.tv_nsec -= 1000000000L;
     }
 
-    do {
+    /*
+     * The deadline is absolute, so retrying never extends the total wait.
+     *
+     * POSIX: clock_nanosleep() returns EINTR when a signal ends the sleep
+     * early. Two deviations are handled here, both found by running the
+     * test suite on other kernels:
+     *   - a libc that reports the interruption as -1 with errno == EINTR
+     *     (the return-value convention of nanosleep());
+     *   - NuttX 13.0.1, whose nxsig_clockwait() wakes on the signal and
+     *     returns 0 as if the interval had elapsed (only its relative
+     *     nanosleep() path compares the remaining time). A 200 ms delay
+     *     came back after 30 ms with "success".
+     * So the return code is not trusted as proof the interval elapsed: the
+     * clock is. A spurious early wake just loops back into the sleep.
+     */
+    for (;;) {
         rc = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &deadline, NULL);
-    } while (rc == EINTR);
 
-    return (rc == 0) ? AOS_SUCCESS : AOS_ERR_GENERIC;
+        if (rc == EINTR || (rc == -1 && errno == EINTR)) {
+            continue;
+        }
+        if (rc != 0) {
+            return AOS_ERR_GENERIC;
+        }
+        if (AOS_PosixDeadlineReached(&deadline)) {
+            return AOS_SUCCESS;
+        }
+    }
 }
 
 int32_t AOS_TaskYield(void)

@@ -16,4 +16,7 @@
  */
 #define AOS_PORT_SEM_USE_CLOCKWAIT  0
 
+/* glibc's pthread_mutex_timedlock is sound; block in the kernel. */
+#define AOS_PORT_MUTEX_TIMEDLOCK_POLL 0
+
 #endif /* AOS_PORT_H */

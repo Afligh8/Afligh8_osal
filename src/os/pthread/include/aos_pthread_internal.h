@@ -22,6 +22,16 @@
  *                                 sem_clockwait(CLOCK_MONOTONIC), immune
  *                                 to wall-clock steps (a GPS time set);
  *                                 0: sem_timedwait on CLOCK_REALTIME.
+ *   AOS_PORT_MUTEX_TIMEDLOCK_POLL 0: AOS_MutexTimedLock is the kernel's
+ *                                 pthread_mutex_timedlock (blocks, keeps
+ *                                 priority inheritance during the wait);
+ *                                 1: it polls pthread_mutex_trylock once
+ *                                 per AOS_PORT_MUTEX_POLL_US until the
+ *                                 deadline on CLOCK_MONOTONIC. For kernels
+ *                                 whose timed lock is unsafe (NuttX 13.0.1
+ *                                 corrupts the mutex when the wait times
+ *                                 out). No priority inheritance while
+ *                                 polling.
  */
 
 #include "aos_osal.h"
@@ -40,6 +50,12 @@
 #endif
 #ifndef AOS_PORT_SEM_USE_CLOCKWAIT
 #error "aos_port.h must define AOS_PORT_SEM_USE_CLOCKWAIT"
+#endif
+#ifndef AOS_PORT_MUTEX_TIMEDLOCK_POLL
+#error "aos_port.h must define AOS_PORT_MUTEX_TIMEDLOCK_POLL"
+#endif
+#if AOS_PORT_MUTEX_TIMEDLOCK_POLL && !defined(AOS_PORT_MUTEX_POLL_US)
+#error "aos_port.h must define AOS_PORT_MUTEX_POLL_US when AOS_PORT_MUTEX_TIMEDLOCK_POLL is 1"
 #endif
 
 int32_t AOS_PosixTaskInit(void);
