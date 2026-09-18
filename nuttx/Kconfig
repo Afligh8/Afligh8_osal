@@ -1,0 +1,59 @@
+#
+# Afligh8_osal -- NuttX configuration
+#
+
+menu "Afligh8 OSAL"
+
+config AOS_OSAL
+	bool "Afligh8 OSAL (aos_osal)"
+	default n
+	depends on !DISABLE_PTHREAD
+	select PRIORITY_INHERITANCE
+	select PTHREAD_MUTEX_TYPES
+	select CANCELLATION_POINTS
+	---help---
+		Afligh8's OS abstraction: tasks, priority-inheriting mutexes,
+		ISR-safe binary semaphores, monotonic time. The NuttX backend is a
+		thin port over a pthread-based core, so it needs priority
+		inheritance, mutex types, cancellation points, thread-local
+		storage (TLS_NELEM >= 1) and a pthread cleanup stack
+		(TLS_NCLEANUP >= 1) from the kernel.
+
+if AOS_OSAL
+
+config AOS_NUTTX_PRIORITY_HIGHEST
+	int "NuttX priority for AOS_TASK_PRIORITY_HIGHEST"
+	default 220
+	range 2 254
+	---help---
+		AOS priority 0 (the highest) maps onto this NuttX priority. Keep it
+		below SCHED_HPWORKPRIORITY: driver interrupt bottom halves run on
+		the high-priority work queue and must never wait behind a flight
+		task. (Placeholder default pending the project's final numbers.)
+
+config AOS_NUTTX_PRIORITY_LOWEST
+	int "NuttX priority for AOS_TASK_PRIORITY_LOWEST"
+	default 127
+	range 1 253
+	---help---
+		AOS_TASK_PRIORITY_LOWEST maps onto this NuttX priority. Keep it above
+		NSH (SCHED_PRIORITY_DEFAULT) and the low-priority work queue so a
+		busy flight stack still leaves the shell responsive but never yields
+		to it.
+
+config AOS_OSAL_TESTS
+	bool "Build the OSAL test suite as NSH commands"
+	default n
+	---help---
+		Registers test_core, test_time, test_task, test_task_delay,
+		test_mutex, test_sem, test_bench_stats and bench_task_lifecycle as
+		builtin NSH commands. Each returns 0 on pass.
+
+config AOS_OSAL_TESTS_STACKSIZE
+	int "Stack size of each test command"
+	default 4096
+	depends on AOS_OSAL_TESTS
+
+endif # AOS_OSAL
+
+endmenu

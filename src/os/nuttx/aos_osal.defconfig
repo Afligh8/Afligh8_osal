@@ -1,0 +1,12 @@
+# Afligh8_osal on NuttX: kernel options the backend requires.
+# Merge into a board's defconfig (or apply with kconfig-tweak) before
+# building any AOS application. src/os/nuttx/include/aos_port.h refuses to
+# compile without them.
+CONFIG_PRIORITY_INHERITANCE=y
+CONFIG_SEM_PREALLOCHOLDERS=16
+CONFIG_PTHREAD_MUTEX_TYPES=y
+CONFIG_CANCELLATION_POINTS=y
+CONFIG_TLS_NELEM=4
+CONFIG_TLS_NCLEANUP=2
+# Not required, but the OSAL's messages are unreadable without it.
+CONFIG_LIBC_STRERROR=y
