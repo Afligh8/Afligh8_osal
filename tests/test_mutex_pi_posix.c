@@ -10,6 +10,10 @@
 #include <stdio.h>
 #include <time.h>
 
+/* NSH reports only 0/1 for a builtin's exit status, so say which check failed. */
+#define AOS_TEST_FAIL(n) \
+    do { fprintf(stderr, "%s: FAILED at check %d\n", __FILE__, (int)(n)); return (n); } while (0)
+
 // convention to remember 0 is highest 31 is lowest priority, so 4 is a high priority, 16 is medium, and 24 is low
 #define PI_PRIORITY_HIGH  ((aos_task_priority_t)(4u))
 #define PI_PRIORITY_MEDIUM ((aos_task_priority_t)(16u))
@@ -239,8 +243,11 @@ static void high_task(void *arg)
     sem_post(&g_done);
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     aos_task_t low_id = AOS_TASK_NONE;
 
     aos_task_t medium_id = AOS_TASK_NONE;
@@ -257,7 +264,7 @@ int main(void)
             "AOS_Init failed: %s\n",
             AOS_StrError(status));
 
-        return 1;
+        AOS_TEST_FAIL(1);
     }
 
     g_test_cpu =
@@ -266,7 +273,7 @@ int main(void)
     if (g_test_cpu < 0){
         fprintf(stderr, "No usable CPU found\n");
 
-        return 2;
+        AOS_TEST_FAIL(2);
     }
 
 
@@ -281,19 +288,19 @@ int main(void)
     {
         fprintf(stderr, "Mutex creation failed: %s\n", AOS_StrError(status));
 
-        return 3;
+        AOS_TEST_FAIL(3);
     }
 
     if (pthread_barrier_init(&g_start_barrier, NULL, 4) != 0){
-        return 4;
+        AOS_TEST_FAIL(4);
     }
 
     if (sem_init(&g_low_locked, 0, 0) != 0){
-        return 5;
+        AOS_TEST_FAIL(5);
     }
 
     if (sem_init(&g_done, 0, 0) != 0){
-        return 6;
+        AOS_TEST_FAIL(6);
     }
 
 
@@ -312,7 +319,7 @@ int main(void)
 
 
     if (status != AOS_SUCCESS){
-        return 7;
+        AOS_TEST_FAIL(7);
     }
 
     /*
@@ -322,7 +329,7 @@ int main(void)
      * LOW definitely owns the mutex.
      */
     if (sem_wait(&g_low_locked) != 0){
-        return 8;
+        AOS_TEST_FAIL(8);
     }
 
     printf("LOW owns mutex\n");
@@ -342,7 +349,7 @@ int main(void)
 
 
     if (status != AOS_SUCCESS){
-        return 9;
+        AOS_TEST_FAIL(9);
     }
 
     /*
@@ -359,7 +366,7 @@ int main(void)
         AOS_TASK_FLAG_NONE);
 
     if (status != AOS_SUCCESS){
-        return 10;
+        AOS_TEST_FAIL(10);
     }
 
     /*
@@ -419,7 +426,7 @@ int main(void)
         /*
          * Special skip return code.
          */
-        return 77;
+        AOS_TEST_FAIL(77);
     }
 
     /*
@@ -441,7 +448,7 @@ int main(void)
                 "HIGH waited %.2f ms\n",
                 g_high_wait_time);
 
-        return 11;
+        AOS_TEST_FAIL(11);
     }
 
     printf("PRIORITY INHERITANCE TEST PASSED: "
@@ -449,19 +456,19 @@ int main(void)
             g_high_wait_time);
 
     if (AOS_TaskDelete(low_id) != AOS_SUCCESS){
-        return 12;
+        AOS_TEST_FAIL(12);
     }
 
     if (AOS_TaskDelete(medium_id) != AOS_SUCCESS){
-        return 13;
+        AOS_TEST_FAIL(13);
     }
 
     if (AOS_TaskDelete(high_id) != AOS_SUCCESS){
-        return 14;
+        AOS_TEST_FAIL(14);
     }
 
     if (AOS_MutexDelete(g_pi_mutex) != AOS_SUCCESS){
-        return 15;
+        AOS_TEST_FAIL(15);
     }
 
     pthread_barrier_destroy(&g_start_barrier);

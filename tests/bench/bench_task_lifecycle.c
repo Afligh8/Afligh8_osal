@@ -138,7 +138,11 @@ int run_osal_benchmark_suite(void){
     return 0;
 }
 
-int main(){
+int main(int argc, char *argv[])
+{
+    (void)argc;
+    (void)argv;
+
 
     int ret = AOS_Init();
 

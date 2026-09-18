@@ -11,7 +11,11 @@ static int fails = 0;
         if (!_ok) fails++;                                          \
     } while (0)
  
-int main(void){
+int main(int argc, char *argv[])
+{
+    (void)argc;
+    (void)argv;
+
 
     aos_id_t id = AOS_IdPack(AOS_TYPE_MUTEX, 1, 0);
     uint32_t caps = 0u;

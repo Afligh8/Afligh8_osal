@@ -2,6 +2,10 @@
 
 #include <stdio.h>
 
+/* NSH reports only 0/1 for a builtin's exit status, so say which check failed. */
+#define AOS_TEST_FAIL(n) \
+    do { fprintf(stderr, "%s: FAILED at check %d\n", __FILE__, (int)(n)); return (n); } while (0)
+
 /*
  * This binary is built against a SEPARATE copy of the OSAL library
  * compiled with AOS_CONFIG_POSIX_RT_REQUIRED=1 (see CMakeLists.txt's
@@ -17,8 +21,11 @@
  * reports it with the correct, specific status code rather than a
  * generic one.
  */
-int main(void)
+int main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     int32_t status = AOS_Init();
 
     if (status == AOS_SUCCESS)
@@ -28,7 +35,7 @@ int main(void)
         if (AOS_GetCapabilities(&caps) != AOS_SUCCESS)
         {
             fprintf(stderr, "AOS_GetCapabilities failed after AOS_Init succeeded\n");
-            return 1;
+            AOS_TEST_FAIL(1);
         }
 
         if (!(caps & AOS_CAP_RT_SCHEDULING))
@@ -36,7 +43,7 @@ int main(void)
             fprintf(stderr,
                     "AOS_Init succeeded under AOS_CONFIG_POSIX_RT_REQUIRED=1 "
                     "but AOS_CAP_RT_SCHEDULING is clear -- contradiction\n");
-            return 2;
+            AOS_TEST_FAIL(2);
         }
 
         printf("RT scheduling privilege available: AOS_Init succeeded and "
@@ -59,5 +66,5 @@ int main(void)
             "unexpected code: %s\n",
             AOS_StrError(status));
 
-    return 3;
+    AOS_TEST_FAIL(3);
 }

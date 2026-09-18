@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+/* NSH reports only 0/1 for a builtin's exit status, so say which check failed. */
+#define AOS_TEST_FAIL(n) \
+    do { fprintf(stderr, "%s: FAILED at check %d\n", __FILE__, (int)(n)); return (n); } while (0)
+
 static volatile int g_value = 0;
 static volatile bool g_keep_running = true;
 
@@ -67,8 +71,11 @@ static void test_task(void *arg)
     }
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     aos_task_t task_id = AOS_TASK_NONE;
     aos_task_info_t info;
     int value = 42;
@@ -77,7 +84,7 @@ int main(void)
 
     if (AOS_Init() != AOS_SUCCESS) {
         fprintf(stderr, "Failed to initialize OSAL\n");
-        return 1;
+        AOS_TEST_FAIL(1);
     }
 
     if (AOS_TaskCreate(&task_id,
@@ -88,7 +95,7 @@ int main(void)
                        64u * 1024u, //64 KB stack
                        AOS_TASK_PRIORITY_DEFAULT,
                        AOS_TASK_FLAG_NONE) != AOS_SUCCESS) {
-        return 2;
+        AOS_TEST_FAIL(2);
     }
 
     for (i = 0; i < 100 && g_value != 42; ++i) {
@@ -120,16 +127,16 @@ int main(void)
                        64u * 1024u,
                        AOS_TASK_PRIORITY_DEFAULT,
                        AOS_TASK_FLAG_NONE) != AOS_SUCCESS) {
-        return 10;
+        AOS_TEST_FAIL(10);
     }
 
     if (AOS_TaskJoin(join_task_id) != AOS_SUCCESS) {
-        return 11;
+        AOS_TEST_FAIL(11);
     }
 
     if (!g_join_task_finished) {
         fprintf(stderr, "Join returned before the task actually finished\n");
-        return 12;
+        AOS_TEST_FAIL(12);
     }
 
     printf("Join waits for natural completion test: PASS\n");
@@ -140,7 +147,7 @@ int main(void)
      * double-join the same pthread_t.
      */
     if (AOS_TaskJoin(join_task_id) != AOS_ERR_INVALID_STATE) {
-        return 13;
+        AOS_TEST_FAIL(13);
     }
 
     printf("Double join rejection test: PASS\n");
@@ -151,7 +158,7 @@ int main(void)
      * already-reaped thread.
      */
     if (AOS_TaskDelete(join_task_id) != AOS_SUCCESS) {
-        return 14;
+        AOS_TEST_FAIL(14);
     }
 
     printf("Delete-after-join test: PASS\n");
@@ -161,7 +168,7 @@ int main(void)
      * TEST: joining a stale/unknown id must fail.
      */
     if (AOS_TaskJoin(join_task_id) != AOS_ERR_INVALID_ID) {
-        return 15;
+        AOS_TEST_FAIL(15);
     }
 
     printf("Join stale id test: PASS\n");
@@ -181,7 +188,7 @@ int main(void)
                        64u * 1024u,
                        AOS_TASK_PRIORITY_DEFAULT,
                        AOS_TASK_FLAG_NONE) != AOS_SUCCESS) {
-        return 16;
+        AOS_TEST_FAIL(16);
     }
 
     for (i = 0; i < 200 && !g_self_join_done; ++i) {
@@ -189,22 +196,22 @@ int main(void)
     }
 
     if (!g_self_join_done) {
-        return 17;
+        AOS_TEST_FAIL(17);
     }
 
     if (g_self_join_result != AOS_ERR_INVALID_PARAM) {
         fprintf(stderr,
                 "Self join: expected AOS_ERR_INVALID_PARAM, got %s\n",
                 AOS_StrError(g_self_join_result));
-        return 18;
+        AOS_TEST_FAIL(18);
     }
 
     if (AOS_TaskJoin(join_task_id) != AOS_SUCCESS) {
-        return 19;
+        AOS_TEST_FAIL(19);
     }
 
     if (AOS_TaskDelete(join_task_id) != AOS_SUCCESS) {
-        return 20;
+        AOS_TEST_FAIL(20);
     }
 
     printf("Self join rejection test: PASS\n");

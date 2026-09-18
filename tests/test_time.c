@@ -13,8 +13,11 @@ static int fails = 0;
         if (!_ok) fails++;                                          \
     } while (0)
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     aos_time_t t0 = 0, t1 = 0;
     struct timespec nap = { 0, 20 * 1000 * 1000 };   /* 20 ms */
 
