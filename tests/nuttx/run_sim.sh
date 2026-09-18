@@ -60,6 +60,13 @@ while IFS= read -r line; do
 done < "${OSAL_ROOT}/src/os/nuttx/aos_osal.defconfig"
 "${TWEAK[@]}" --enable CONFIG_AOS_OSAL
 "${TWEAK[@]}" --enable CONFIG_AOS_OSAL_TESTS
+# The sim board's default kernel work-queue priority (224) sits inside the
+# window the NuttX port now claims (240..209, matched to PX4_WQ_HP_BASE).
+# A real board's own defconfig makes this choice for real reasons (ours
+# will follow PX4's 249); here it's just so the simulator's guard
+# (AOS_CONFIG_NUTTX_PRIORITY_HIGHEST < CONFIG_SCHED_HPWORKPRIORITY) is
+# satisfiable with no real interrupt bottom halves to protect.
+"${TWEAK[@]}" --set-val CONFIG_SCHED_HPWORKPRIORITY 249
 "${TWEAK[@]}" --set-val CONFIG_AOS_OSAL_TESTS_STACKSIZE 65536   # host-sized stacks on the sim
 "${TWEAK[@]}" --enable CONFIG_LIBM                              # sqrt() in the bench stats
 

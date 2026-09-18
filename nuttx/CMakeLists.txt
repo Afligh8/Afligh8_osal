@@ -50,6 +50,11 @@ if(CONFIG_AOS_OSAL)
       AOS_CONFIG_NUTTX_PRIORITY_LOWEST=${CONFIG_AOS_NUTTX_PRIORITY_LOWEST})
   endif()
 
+  if(CONFIG_AOS_NUTTX_TASK_BACKEND_TASK_CREATE)
+    target_compile_definitions(aos_osal PRIVATE AOS_NUTTX_TASK_BACKEND=AOS_NUTTX_TASK_BACKEND_TASK_CREATE)
+  endif()
+  # Pthreads is aos_port.h's own default; no define needed for it.
+
   if(CONFIG_AOS_OSAL_TESTS)
     # One NSH command per test binary, same names as the host ctest targets.
     # Each test's main() returns 0 on pass, so `test_core; echo $?` in NSH

@@ -55,23 +55,68 @@
 #define AOS_PORT_NAME               "nuttx"
 
 /*
+ * Task primitive, selectable at compile time (CONFIG_AOS_NUTTX_TASK_BACKEND
+ * in nuttx/Kconfig -> -DAOS_NUTTX_TASK_BACKEND_PTHREAD or
+ * _TASK_CREATE on the aos_osal target):
+ *
+ *   AOS_NUTTX_TASK_BACKEND_PTHREAD (default): the shared src/os/pthread/
+ *     implementation, unmodified -- pthread_create() inside the calling
+ *     process's task group. Join, cancellation, and TLS all come from
+ *     glibc-compatible pthreads, exactly like the Linux port; the OSAL's
+ *     join/delete race handling is proven code, reused rather than
+ *     reimplemented.
+ *
+ *   AOS_NUTTX_TASK_BACKEND_TASK_CREATE: reserved for a future backend
+ *     using NuttX's native task_create()/task_delete() -- a real kernel
+ *     task per AOS task (its own address space under CONFIG_BUILD_PROTECTED
+ *     or CONFIG_BUILD_KERNEL) rather than a thread in one. Not implemented:
+ *     src/os/nuttx/src/aos_nuttx_task.c does not exist yet. Selecting it
+ *     fails the build on purpose, not silently falls back.
+ */
+#define AOS_NUTTX_TASK_BACKEND_PTHREAD     1
+#define AOS_NUTTX_TASK_BACKEND_TASK_CREATE 2
+
+#ifndef AOS_NUTTX_TASK_BACKEND
+#define AOS_NUTTX_TASK_BACKEND AOS_NUTTX_TASK_BACKEND_PTHREAD
+#endif
+
+#if AOS_NUTTX_TASK_BACKEND == AOS_NUTTX_TASK_BACKEND_TASK_CREATE
+#error "AOS_NUTTX_TASK_BACKEND_TASK_CREATE is reserved, not implemented -- select AOS_NUTTX_TASK_BACKEND_PTHREAD"
+#elif AOS_NUTTX_TASK_BACKEND != AOS_NUTTX_TASK_BACKEND_PTHREAD
+#error "Unknown AOS_NUTTX_TASK_BACKEND"
+#endif
+
+/*
  * The NuttX priority window AOS priorities map onto. AOS 0 (highest) lands
  * on AOS_CONFIG_NUTTX_PRIORITY_HIGHEST, AOS_TASK_PRIORITY_LOWEST on
  * AOS_CONFIG_NUTTX_PRIORITY_LOWEST, linearly in between.
  *
- * PLACEHOLDER VALUES, pending the project's final numbers. The intent they
- * encode: flight tasks sit BELOW the kernel's high-priority work queue
- * (CONFIG_SCHED_HPWORKPRIORITY, 224 by default, where driver interrupt
- * bottom halves run) and ABOVE NSH (SCHED_PRIORITY_DEFAULT, 100) and the
- * low-priority work queue. 32 AOS levels, 3 NuttX levels apart. Override
- * both from the board's Kconfig (CONFIG_AOS_NUTTX_PRIORITY_*) or compile
- * definitions.
+ * Modelled on PX4's own window, so an AOS priority is directly comparable
+ * to a PX4 module's: PX4 defines PX4_WQ_HP_BASE = SCHED_PRIORITY_MAX - 15
+ * = 240 as the ceiling for its flight-critical work queues (attitude_control
+ * at base-4 = 236, estimator at base-5 = 235, tapering to slow_driver at
+ * base-35 = 205), stays below the kernel's own high-priority work queue
+ * (PX4 configures CONFIG_SCHED_HPWORKPRIORITY=249, for DMA/driver bottom
+ * halves), and stays comfortably above NSH (SCHED_PRIORITY_DEFAULT, 100)
+ * and the kernel's low-priority queue (PX4: 50).
+ *
+ * AOS 0 (highest) -> 240, the same ceiling as PX4_WQ_HP_BASE: our sensor,
+ * estimator, and controller tasks are the flight-critical band, exactly
+ * what PX4 puts there. AOS_TASK_PRIORITY_LOWEST -> 209, four above PX4's
+ * slow_driver, keeping every AOS task inside the flight-critical band
+ * rather than spreading down into NSH's territory. 32 AOS levels, 1
+ * NuttX level apart.
+ *
+ * A board that configures CONFIG_SCHED_HPWORKPRIORITY must keep it above
+ * 240 (249, matching PX4, unless there's a reason to differ). Override
+ * either bound from the board's Kconfig (CONFIG_AOS_NUTTX_PRIORITY_*) or
+ * compile definitions.
  */
 #ifndef AOS_CONFIG_NUTTX_PRIORITY_HIGHEST
-#define AOS_CONFIG_NUTTX_PRIORITY_HIGHEST 220
+#define AOS_CONFIG_NUTTX_PRIORITY_HIGHEST 240
 #endif
 #ifndef AOS_CONFIG_NUTTX_PRIORITY_LOWEST
-#define AOS_CONFIG_NUTTX_PRIORITY_LOWEST  127
+#define AOS_CONFIG_NUTTX_PRIORITY_LOWEST  209
 #endif
 
 #if defined(CONFIG_SCHED_HPWORK) && (AOS_CONFIG_NUTTX_PRIORITY_HIGHEST >= CONFIG_SCHED_HPWORKPRIORITY)
