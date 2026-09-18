@@ -1,5 +1,6 @@
 #include "aos_mutex.h"
 #include "aos_task.h"
+#include "aos_pthread_internal.h"
 
 #include <pthread.h>
 #include <errno.h>
@@ -412,11 +413,7 @@ int32_t AOS_MutexTimedLock(
 {
     aos_posix_mutex_slot_t *slot;
 
-    struct timespec deadline;
-
     int32_t status;
-
-    uint64_t additional_ns;
 
     int rc;
 
@@ -429,38 +426,43 @@ int32_t AOS_MutexTimedLock(
         return status;
     }
 
-    if (clock_gettime(
-            CLOCK_REALTIME,
-            &deadline) != 0) {
+    {
+        struct timespec deadline;
+        uint64_t additional_ns;
 
-        AOS_PosixMutexReleaseReference(slot);
+        if (clock_gettime(
+                CLOCK_REALTIME,
+                &deadline) != 0) {
 
-        return AOS_ERR_GENERIC;
+            AOS_PosixMutexReleaseReference(slot);
+
+            return AOS_ERR_GENERIC;
+        }
+
+        deadline.tv_sec +=
+            (time_t)(timeout_ms / 1000u);
+
+        additional_ns =
+            (uint64_t)(timeout_ms % 1000u) *
+            1000000ull;
+
+        additional_ns +=
+            (uint64_t)deadline.tv_nsec;
+
+        deadline.tv_sec +=
+            (time_t)(
+                additional_ns /
+                1000000000ull);
+
+        deadline.tv_nsec =
+            (long)(
+                additional_ns %
+                1000000000ull);
+
+        rc = pthread_mutex_timedlock(
+            &slot->native_mutex,
+            &deadline);
     }
-
-    deadline.tv_sec +=
-        (time_t)(timeout_ms / 1000u);
-
-    additional_ns =
-        (uint64_t)(timeout_ms % 1000u) *
-        1000000ull;
-
-    additional_ns +=
-        (uint64_t)deadline.tv_nsec;
-
-    deadline.tv_sec +=
-        (time_t)(
-            additional_ns /
-            1000000000ull);
-
-    deadline.tv_nsec =
-        (long)(
-            additional_ns %
-            1000000000ull);
-
-    rc = pthread_mutex_timedlock(
-        &slot->native_mutex,
-        &deadline);
 
     if (rc == 0) {
 
