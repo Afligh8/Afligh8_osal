@@ -1,5 +1,6 @@
 #include "aos_sem.h"
 #include "aos_task.h"
+#include "aos_pthread_internal.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -430,9 +431,17 @@ int32_t AOS_SemTimedWait(
         return status;
     }
 
-    if (clock_gettime(
-            CLOCK_REALTIME,
-            &deadline) != 0) {
+    /*
+     * Which clock the deadline lives on is the port's call: CLOCK_MONOTONIC
+     * via sem_clockwait() where the OS has it (a wall-clock step, e.g. the
+     * first GPS fix setting system time, then cannot stretch or collapse a
+     * wait), else POSIX's CLOCK_REALTIME sem_timedwait().
+     */
+#if AOS_PORT_SEM_USE_CLOCKWAIT
+    if (clock_gettime(CLOCK_MONOTONIC, &deadline) != 0) {
+#else
+    if (clock_gettime(CLOCK_REALTIME, &deadline) != 0) {
+#endif
 
         AOS_PosixSemReleaseReference(slot);
 
@@ -460,7 +469,11 @@ int32_t AOS_SemTimedWait(
             1000000000ull);
 
     do {
+#if AOS_PORT_SEM_USE_CLOCKWAIT
+        rc = sem_clockwait(&slot->native_sem, CLOCK_MONOTONIC, &deadline);
+#else
         rc = sem_timedwait(&slot->native_sem, &deadline);
+#endif
 
         if (rc != 0) {
             saved_errno = errno;

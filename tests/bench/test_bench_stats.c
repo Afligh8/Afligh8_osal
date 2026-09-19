@@ -27,8 +27,11 @@ static int CheckClose(const char *what, double got, double expected, double tol)
     return 1;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     bench_summary_t summary;
     int i;
     int ok = 1;
@@ -67,7 +70,10 @@ int main(void)
      * and confirm exactly one more sample gets rejected and counted as
      * dropped, not silently lost or accepted past capacity. */
     {
-        bench_series_t full;
+        /* static: this is ~160 KB, far more than a task stack (the header's
+         * own warning). The host's 8 MB main-thread stack hid the overflow;
+         * NuttX's 64 KB test stack found it. */
+        static bench_series_t full;
         size_t j;
 
         BenchSeriesReset(&full);

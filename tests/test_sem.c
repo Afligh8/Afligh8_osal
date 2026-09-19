@@ -5,6 +5,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+/* NSH reports only 0/1 for a builtin's exit status, so say which check failed. */
+#define AOS_TEST_FAIL(n) \
+    do { fprintf(stderr, "%s: FAILED at check %d\n", __FILE__, (int)(n)); return (n); } while (0)
+
 static volatile bool g_worker_started = false;
 
 static volatile bool g_worker_done = false;
@@ -31,8 +35,11 @@ static void blocking_waiter(void *arg)
     g_worker_done = true;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     aos_sem_t sem_id      = AOS_SEM_NONE;
     aos_sem_t other_sem_id = AOS_SEM_NONE;
     aos_task_t task_id     = AOS_TASK_NONE;
@@ -55,7 +62,7 @@ int main(void)
                 "Failed to initialize OSAL: %s\n",
                 AOS_StrError(status));
 
-        return 1;
+        AOS_TEST_FAIL(1);
     }
 
 
@@ -66,21 +73,21 @@ int main(void)
 
     if (status != AOS_ERR_INVALID_POINTER)
     {
-        return 2;
+        AOS_TEST_FAIL(2);
     }
 
     status = AOS_SemCreate(&sem_id, NULL, AOS_SEM_EMPTY, AOS_SEM_FLAG_NONE);
 
     if (status != AOS_ERR_INVALID_POINTER)
     {
-        return 3;
+        AOS_TEST_FAIL(3);
     }
 
     status = AOS_SemCreate(&sem_id, "", AOS_SEM_EMPTY, AOS_SEM_FLAG_NONE);
 
     if (status != AOS_ERR_INVALID_PARAM)
     {
-        return 4;
+        AOS_TEST_FAIL(4);
     }
 
     status = AOS_SemCreate(
@@ -91,21 +98,21 @@ int main(void)
 
     if (status != AOS_ERR_NAME_TOO_LONG)
     {
-        return 5;
+        AOS_TEST_FAIL(5);
     }
 
     status = AOS_SemCreate(&sem_id, "bad-flags", AOS_SEM_EMPTY, 0xFFu);
 
     if (status != AOS_ERR_INVALID_PARAM)
     {
-        return 6;
+        AOS_TEST_FAIL(6);
     }
 
     status = AOS_SemCreate(&sem_id, "bad-state", (aos_sem_state_t)7, AOS_SEM_FLAG_NONE);
 
     if (status != AOS_ERR_INVALID_PARAM)
     {
-        return 7;
+        AOS_TEST_FAIL(7);
     }
 
     printf("Parameter validation test: PASS\n");
@@ -126,12 +133,12 @@ int main(void)
                 "AOS_SemCreate failed: %s\n",
                 AOS_StrError(status));
 
-        return 8;
+        AOS_TEST_FAIL(8);
     }
 
     if (AOS_IdType(sem_id.id) != AOS_TYPE_BINSEM)
     {
-        return 9;
+        AOS_TEST_FAIL(9);
     }
 
 
@@ -150,7 +157,7 @@ int main(void)
                 "Duplicate name: expected AOS_ERR_NAME_TAKEN, got %s\n",
                 AOS_StrError(status));
 
-        return 10;
+        AOS_TEST_FAIL(10);
     }
 
     printf("Duplicate name test: PASS\n");
@@ -163,7 +170,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 11;
+        AOS_TEST_FAIL(11);
     }
 
     printf("GetInfo test: PASS\n");
@@ -180,7 +187,7 @@ int main(void)
                 "TryWait empty: expected AOS_ERR_BUSY, got %s\n",
                 AOS_StrError(status));
 
-        return 12;
+        AOS_TEST_FAIL(12);
     }
 
     printf("TryWait empty test: PASS\n");
@@ -197,7 +204,7 @@ int main(void)
                 "TimedWait empty: expected AOS_ERR_TIMEOUT, got %s\n",
                 AOS_StrError(status));
 
-        return 13;
+        AOS_TEST_FAIL(13);
     }
 
     printf("TimedWait timeout test: PASS\n");
@@ -210,7 +217,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 14;
+        AOS_TEST_FAIL(14);
     }
 
 
@@ -226,7 +233,7 @@ int main(void)
                 "Double post: expected AOS_ERR_INVALID_STATE, got %s\n",
                 AOS_StrError(status));
 
-        return 15;
+        AOS_TEST_FAIL(15);
     }
 
     printf("Double post rejection test: PASS\n");
@@ -235,7 +242,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 16;
+        AOS_TEST_FAIL(16);
     }
 
     /*
@@ -245,7 +252,7 @@ int main(void)
 
     if (status != AOS_ERR_BUSY)
     {
-        return 17;
+        AOS_TEST_FAIL(17);
     }
 
     printf("Post/TryWait consume test: PASS\n");
@@ -272,7 +279,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 18;
+        AOS_TEST_FAIL(18);
     }
 
     for (i = 0u;
@@ -284,7 +291,7 @@ int main(void)
 
     if (!g_worker_started)
     {
-        return 19;
+        AOS_TEST_FAIL(19);
     }
 
     /*
@@ -298,7 +305,7 @@ int main(void)
         fprintf(stderr,
                 "Worker completed before being posted\n");
 
-        return 20;
+        AOS_TEST_FAIL(20);
     }
 
 
@@ -313,7 +320,7 @@ int main(void)
                 "Busy delete: expected AOS_ERR_BUSY, got %s\n",
                 AOS_StrError(status));
 
-        return 21;
+        AOS_TEST_FAIL(21);
     }
 
     printf("Busy delete test: PASS\n");
@@ -323,7 +330,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 22;
+        AOS_TEST_FAIL(22);
     }
 
     for (i = 0u;
@@ -335,24 +342,24 @@ int main(void)
 
     if (!g_worker_done)
     {
-        return 23;
+        AOS_TEST_FAIL(23);
     }
 
     if (g_worker_result != AOS_SUCCESS)
     {
-        return 24;
+        AOS_TEST_FAIL(24);
     }
 
     if (g_shared_value != 42)
     {
-        return 25;
+        AOS_TEST_FAIL(25);
     }
 
     printf("Blocking wait/post test: PASS\n");
 
     if (AOS_TaskDelete(task_id) != AOS_SUCCESS)
     {
-        return 26;
+        AOS_TEST_FAIL(26);
     }
 
 
@@ -367,7 +374,7 @@ int main(void)
                 "AOS_SemDelete failed: %s\n",
                 AOS_StrError(status));
 
-        return 27;
+        AOS_TEST_FAIL(27);
     }
 
     printf("Semaphore delete test: PASS\n");
@@ -378,12 +385,12 @@ int main(void)
      */
     if (AOS_SemWait(sem_id) != AOS_ERR_INVALID_ID)
     {
-        return 28;
+        AOS_TEST_FAIL(28);
     }
 
     if (AOS_SemPost(sem_id) != AOS_ERR_INVALID_ID)
     {
-        return 29;
+        AOS_TEST_FAIL(29);
     }
 
     printf("Stale ID test: PASS\n");
@@ -400,7 +407,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 30;
+        AOS_TEST_FAIL(30);
     }
 
     status = AOS_SemTryWait(sem_id);
@@ -411,12 +418,12 @@ int main(void)
                 "Initial-full TryWait: expected AOS_SUCCESS, got %s\n",
                 AOS_StrError(status));
 
-        return 31;
+        AOS_TEST_FAIL(31);
     }
 
     if (AOS_SemDelete(sem_id) != AOS_SUCCESS)
     {
-        return 32;
+        AOS_TEST_FAIL(32);
     }
 
     printf("Initial-full creation test: PASS\n");

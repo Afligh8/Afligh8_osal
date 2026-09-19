@@ -1,5 +1,6 @@
 #include "aos_mutex.h"
 #include "aos_task.h"
+#include "aos_pthread_internal.h"
 
 #include <pthread.h>
 #include <errno.h>
@@ -406,17 +407,59 @@ int32_t AOS_MutexTryLock(
     return AOS_ERR_GENERIC;
 }
 
+#if AOS_PORT_MUTEX_TIMEDLOCK_POLL
+/*
+ * Bounded lock by polling: see AOS_PORT_MUTEX_TIMEDLOCK_POLL in
+ * aos_pthread_internal.h for why a port would choose this over the
+ * kernel's timed lock.
+ */
+static int AOS_PosixMutexPollLock(pthread_mutex_t *native, uint32_t timeout_ms)
+{
+    struct timespec deadline;
+    struct timespec nap;
+    int rc;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &deadline) != 0) {
+        return EINVAL;
+    }
+    deadline.tv_sec  += (time_t)(timeout_ms / 1000u);
+    deadline.tv_nsec += (long)(timeout_ms % 1000u) * 1000000L;
+    if (deadline.tv_nsec >= 1000000000L) {
+        deadline.tv_sec  += 1;
+        deadline.tv_nsec -= 1000000000L;
+    }
+
+    nap.tv_sec  = 0;
+    nap.tv_nsec = (long)AOS_PORT_MUTEX_POLL_US * 1000L;
+
+    for (;;) {
+        struct timespec now;
+
+        rc = pthread_mutex_trylock(native);
+        if (rc != EBUSY) {
+            return rc;                     /* 0, EDEADLK, or a real failure */
+        }
+
+        if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
+            return EINVAL;
+        }
+        if (now.tv_sec > deadline.tv_sec ||
+            (now.tv_sec == deadline.tv_sec && now.tv_nsec >= deadline.tv_nsec)) {
+            return ETIMEDOUT;
+        }
+
+        (void)clock_nanosleep(CLOCK_MONOTONIC, 0, &nap, NULL);
+    }
+}
+#endif /* AOS_PORT_MUTEX_TIMEDLOCK_POLL */
+
 int32_t AOS_MutexTimedLock(
     aos_mutex_t mutex_id,
     uint32_t timeout_ms)
 {
     aos_posix_mutex_slot_t *slot;
 
-    struct timespec deadline;
-
     int32_t status;
-
-    uint64_t additional_ns;
 
     int rc;
 
@@ -429,38 +472,51 @@ int32_t AOS_MutexTimedLock(
         return status;
     }
 
-    if (clock_gettime(
-            CLOCK_REALTIME,
-            &deadline) != 0) {
+#if AOS_PORT_MUTEX_TIMEDLOCK_POLL
 
-        AOS_PosixMutexReleaseReference(slot);
+    rc = AOS_PosixMutexPollLock(&slot->native_mutex, timeout_ms);
 
-        return AOS_ERR_GENERIC;
+#else
+
+    {
+        struct timespec deadline;
+        uint64_t additional_ns;
+
+        if (clock_gettime(
+                CLOCK_REALTIME,
+                &deadline) != 0) {
+
+            AOS_PosixMutexReleaseReference(slot);
+
+            return AOS_ERR_GENERIC;
+        }
+
+        deadline.tv_sec +=
+            (time_t)(timeout_ms / 1000u);
+
+        additional_ns =
+            (uint64_t)(timeout_ms % 1000u) *
+            1000000ull;
+
+        additional_ns +=
+            (uint64_t)deadline.tv_nsec;
+
+        deadline.tv_sec +=
+            (time_t)(
+                additional_ns /
+                1000000000ull);
+
+        deadline.tv_nsec =
+            (long)(
+                additional_ns %
+                1000000000ull);
+
+        rc = pthread_mutex_timedlock(
+            &slot->native_mutex,
+            &deadline);
     }
 
-    deadline.tv_sec +=
-        (time_t)(timeout_ms / 1000u);
-
-    additional_ns =
-        (uint64_t)(timeout_ms % 1000u) *
-        1000000ull;
-
-    additional_ns +=
-        (uint64_t)deadline.tv_nsec;
-
-    deadline.tv_sec +=
-        (time_t)(
-            additional_ns /
-            1000000000ull);
-
-    deadline.tv_nsec =
-        (long)(
-            additional_ns %
-            1000000000ull);
-
-    rc = pthread_mutex_timedlock(
-        &slot->native_mutex,
-        &deadline);
+#endif /* AOS_PORT_MUTEX_TIMEDLOCK_POLL */
 
     if (rc == 0) {
 

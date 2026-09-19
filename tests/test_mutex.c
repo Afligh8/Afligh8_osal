@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <semaphore.h>
 
+/* NSH reports only 0/1 for a builtin's exit status, so say which check failed. */
+#define AOS_TEST_FAIL(n) \
+    do { fprintf(stderr, "%s: FAILED at check %d\n", __FILE__, (int)(n)); return (n); } while (0)
+
 typedef struct {
     aos_mutex_t mutex_id;
     sem_t done;
@@ -91,24 +95,26 @@ static void timed_waiter(void *arg)
 
 static void normal_waiter(void *arg)
 {
-    aos_mutex_t mutex_id =
-        *(aos_mutex_t *)arg;
+    aos_mutex_t mutex_id = *(aos_mutex_t *)arg;
+    int32_t lock_status = AOS_MutexLock(mutex_id);
 
-
-    if (AOS_MutexLock(
-            mutex_id) == AOS_SUCCESS) {
-
+    if (lock_status == AOS_SUCCESS) {
         g_shared_value = 42;
-
-        (void)AOS_MutexUnlock(
-            mutex_id);
+        (void)AOS_MutexUnlock(mutex_id);
+    } else {
+        /* Say so: a non-blocking failure and a hang look identical from main(). */
+        fprintf(stderr, "normal_waiter: AOS_MutexLock returned %s\n",
+                AOS_StrError(lock_status));
     }
 
     g_lock_done = true;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     aos_mutex_t mutex_id = AOS_MUTEX_NONE;
     aos_task_t  task_id  = AOS_TASK_NONE;
 
@@ -132,7 +138,7 @@ int main(void)
     if (sem_init(&ctx.done, 0, 0) != 0)
     {
         fprintf(stderr, "sem_init failed\n");
-        return 1;
+        AOS_TEST_FAIL(1);
     }
 
 
@@ -147,7 +153,7 @@ int main(void)
                 "Failed to initialize OSAL: %s\n",
                 AOS_StrError(status));
 
-        return 2;
+        AOS_TEST_FAIL(2);
     }
 
 
@@ -165,7 +171,7 @@ int main(void)
                 "AOS_MutexCreate failed: %s\n",
                 AOS_StrError(status));
 
-        return 3;
+        AOS_TEST_FAIL(3);
     }
 
 
@@ -180,7 +186,7 @@ int main(void)
      */
     if (AOS_IdType(mutex_id.id) != AOS_TYPE_MUTEX)
     {
-        return 4;
+        AOS_TEST_FAIL(4);
     }
 
 
@@ -193,7 +199,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 5;
+        AOS_TEST_FAIL(5);
     }
 
 
@@ -204,7 +210,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 6;
+        AOS_TEST_FAIL(6);
     }
 
 
@@ -226,7 +232,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 7;
+        AOS_TEST_FAIL(7);
     }
 
 
@@ -243,7 +249,7 @@ int main(void)
         fprintf(stderr,
                 "Timed-lock waiter did not complete\n");
 
-        return 8;
+        AOS_TEST_FAIL(8);
     }
 
 
@@ -253,7 +259,7 @@ int main(void)
                 "TimedLock: expected AOS_ERR_TIMEOUT, got %s\n",
                 AOS_StrError(g_timed_result));
 
-        return 9;
+        AOS_TEST_FAIL(9);
     }
 
 
@@ -265,7 +271,7 @@ int main(void)
      */
     if (AOS_TaskDelete(task_id) != AOS_SUCCESS)
     {
-        return 10;
+        AOS_TEST_FAIL(10);
     }
 
 
@@ -288,13 +294,13 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 11;
+        AOS_TEST_FAIL(11);
     }
 
 
     if (sem_wait(&ctx.done) != 0)
     {
-        return 12;
+        AOS_TEST_FAIL(12);
     }
 
 
@@ -304,7 +310,7 @@ int main(void)
                 "TryLock: expected AOS_ERR_BUSY, got %s\n",
                 AOS_StrError(ctx.result));
 
-        return 13;
+        AOS_TEST_FAIL(13);
     }
 
 
@@ -313,7 +319,7 @@ int main(void)
 
     if (AOS_TaskDelete(task_id) != AOS_SUCCESS)
     {
-        return 14;
+        AOS_TEST_FAIL(14);
     }
 
 
@@ -328,7 +334,7 @@ int main(void)
                 "Busy delete: expected AOS_ERR_BUSY, got %s\n",
                 AOS_StrError(status));
 
-        return 15;
+        AOS_TEST_FAIL(15);
     }
 
 
@@ -352,13 +358,13 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 16;
+        AOS_TEST_FAIL(16);
     }
 
 
     if (sem_wait(&ctx.done) != 0)
     {
-        return 17;
+        AOS_TEST_FAIL(17);
     }
 
 
@@ -369,7 +375,7 @@ int main(void)
                 "AOS_ERR_INVALID_STATE, got %s\n",
                 AOS_StrError(ctx.result));
 
-        return 18;
+        AOS_TEST_FAIL(18);
     }
 
 
@@ -378,7 +384,7 @@ int main(void)
 
     if (AOS_TaskDelete(task_id) != AOS_SUCCESS)
     {
-        return 19;
+        AOS_TEST_FAIL(19);
     }
 
 
@@ -389,7 +395,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 20;
+        AOS_TEST_FAIL(20);
     }
 
 
@@ -412,7 +418,7 @@ int main(void)
 
     if (status != AOS_SUCCESS)
     {
-        return 21;
+        AOS_TEST_FAIL(21);
     }
 
 
@@ -426,13 +432,13 @@ int main(void)
 
     if (!g_lock_done)
     {
-        return 22;
+        AOS_TEST_FAIL(22);
     }
 
 
     if (g_shared_value != 42)
     {
-        return 23;
+        AOS_TEST_FAIL(23);
     }
 
 
@@ -441,7 +447,7 @@ int main(void)
 
     if (AOS_TaskDelete(task_id) != AOS_SUCCESS)
     {
-        return 24;
+        AOS_TEST_FAIL(24);
     }
 
 
@@ -456,7 +462,7 @@ int main(void)
                 "AOS_MutexDelete failed: %s\n",
                 AOS_StrError(status));
 
-        return 25;
+        AOS_TEST_FAIL(25);
     }
 
 
@@ -474,7 +480,7 @@ int main(void)
                 "Stale ID: expected AOS_ERR_INVALID_ID, got %s\n",
                 AOS_StrError(status));
 
-        return 26;
+        AOS_TEST_FAIL(26);
     }
 
 
@@ -486,7 +492,7 @@ int main(void)
      */
     if (sem_destroy(&ctx.done) != 0)
     {
-        return 27;
+        AOS_TEST_FAIL(27);
     }
 
     puts("ALL MUTEX TESTS PASSED");

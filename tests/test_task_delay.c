@@ -8,6 +8,10 @@
 #include <string.h>
 #include <time.h>
 
+/* NSH reports only 0/1 for a builtin's exit status, so say which check failed. */
+#define AOS_TEST_FAIL(n) \
+    do { fprintf(stderr, "%s: FAILED at check %d\n", __FILE__, (int)(n)); return (n); } while (0)
+
 /*
  * AOS_TaskDelay() is implemented on clock_nanosleep(CLOCK_MONOTONIC,
  * TIMER_ABSTIME, ...) against a deadline computed once up front, with a
@@ -98,8 +102,11 @@ static void delayed_task(void *arg)
     g_worker_done = true;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    (void)argc;
+    (void)argv;
+
     aos_task_t task_id = AOS_TASK_NONE;
     pthread_t interrupter;
     unsigned int i;
@@ -108,7 +115,7 @@ int main(void)
     if (AOS_Init() != AOS_SUCCESS)
     {
         fprintf(stderr, "AOS_Init failed\n");
-        return 1;
+        AOS_TEST_FAIL(1);
     }
 
     if (AOS_TaskCreate(
@@ -121,7 +128,7 @@ int main(void)
             AOS_TASK_PRIORITY_DEFAULT,
             AOS_TASK_FLAG_NONE) != AOS_SUCCESS)
     {
-        return 2;
+        AOS_TEST_FAIL(2);
     }
 
     for (i = 0u; i < 500u && !g_target_ready; ++i)
@@ -132,13 +139,13 @@ int main(void)
     if (!g_target_ready)
     {
         fprintf(stderr, "Worker never published a target thread\n");
-        return 3;
+        AOS_TEST_FAIL(3);
     }
 
     if (pthread_create(&interrupter, NULL, interrupter_thread, NULL) != 0)
     {
         fprintf(stderr, "Failed to start interrupter thread\n");
-        return 4;
+        AOS_TEST_FAIL(4);
     }
 
     for (i = 0u; i < 500u && !g_worker_done; ++i)
@@ -152,18 +159,24 @@ int main(void)
     if (!g_worker_done)
     {
         fprintf(stderr, "Worker did not complete\n");
-        return 5;
+        AOS_TEST_FAIL(5);
     }
 
     if (AOS_TaskJoin(task_id) != AOS_SUCCESS)
     {
-        return 6;
+        AOS_TEST_FAIL(6);
     }
 
     if (AOS_TaskDelete(task_id) != AOS_SUCCESS)
     {
-        return 7;
+        AOS_TEST_FAIL(7);
     }
+
+    /* Measurement first, judgement after: on a failure the numbers are the
+     * evidence, and NSH reports nothing but 0/1 for the exit status. */
+    printf("AOS_TaskDelay(%u ms): status=%s, interrupted %d times, measured %ld ms\n",
+           DELAY_TARGET_MS, AOS_StrError(g_worker_status), (int)g_signal_count,
+           (long)(g_worker_elapsed_us / 1000));
 
     if (g_signal_count < 3)
     {
@@ -171,7 +184,7 @@ int main(void)
                 "Interrupter only fired %d times -- test setup problem, "
                 "not evidence about AOS_TaskDelay\n",
                 (int)g_signal_count);
-        return 8;
+        AOS_TEST_FAIL(8);
     }
 
     if (g_worker_status != AOS_SUCCESS)
@@ -180,7 +193,7 @@ int main(void)
                 "AOS_TaskDelay returned %s under signal interruption, "
                 "expected AOS_SUCCESS\n",
                 AOS_StrError(g_worker_status));
-        return 9;
+        AOS_TEST_FAIL(9);
     }
 
     elapsed_ms = (long)(g_worker_elapsed_us / 1000);
@@ -201,7 +214,7 @@ int main(void)
                 "AOS_TaskDelay returned early under signal interruption: "
                 "requested %ums, only waited %ldms\n",
                 DELAY_TARGET_MS, elapsed_ms);
-        return 10;
+        AOS_TEST_FAIL(10);
     }
 
     /*
@@ -216,7 +229,7 @@ int main(void)
                 "AOS_TaskDelay waited far longer than requested: "
                 "requested %ums, waited %ldms\n",
                 DELAY_TARGET_MS, elapsed_ms);
-        return 11;
+        AOS_TEST_FAIL(11);
     }
 
     puts("ALL TASK DELAY TESTS PASSED");

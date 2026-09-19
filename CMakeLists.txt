@@ -9,13 +9,19 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 add_compile_options(-Wall -Wextra -Werror)
 add_compile_definitions(_POSIX_C_SOURCE=200809L)
                                                   
-set(AOS_SOURCES
-    src/os/${AOS_BACKEND}/src/aos_${AOS_BACKEND}.c
-    src/os/${AOS_BACKEND}/src/aos_status.c
-    src/os/${AOS_BACKEND}/src/aos_task.c
-    src/os/${AOS_BACKEND}/src/aos_mutex.c
-    src/os/${AOS_BACKEND}/src/aos_sem.c
-)
+# The nuttx backend is built inside a NuttX tree by nuttx/CMakeLists.txt
+# (it needs the kernel's headers and Kconfig); this file is the host build.
+if(AOS_BACKEND STREQUAL "nuttx")
+    message(FATAL_ERROR
+        "AOS_BACKEND=nuttx is not built by this CMakeLists.txt. "
+        "Add this repository's nuttx/ directory to a NuttX apps tree instead "
+        "(see nuttx/README.md), or run tests/nuttx/run_sim.sh for the simulator.")
+endif()
+
+include(cmake/AosSources.cmake)
+aos_backend_sources(${AOS_BACKEND} AOS_SOURCES)
+aos_backend_private_includes(${AOS_BACKEND} AOS_PRIVATE_INCLUDES)
+list(TRANSFORM AOS_PRIVATE_INCLUDES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 
 add_library(aos_osal STATIC ${AOS_SOURCES})
 
@@ -24,7 +30,7 @@ target_include_directories(aos_osal
         ${CMAKE_CURRENT_SOURCE_DIR}/src/include
 
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/os/${AOS_BACKEND}/include
+        ${AOS_PRIVATE_INCLUDES}
 )
 
 find_package(Threads REQUIRED)
@@ -70,7 +76,7 @@ if(AOS_BACKEND STREQUAL "posix"
         PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/src/include
         PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/os/${AOS_BACKEND}/include
+            ${AOS_PRIVATE_INCLUDES}
     )
 
     target_compile_definitions(aos_osal_rt_required PRIVATE AOS_CONFIG_POSIX_RT_REQUIRED=1)

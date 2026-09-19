@@ -1,4 +1,5 @@
 #include "aos_task.h"
+#include "aos_pthread_internal.h"
 
 #include <stdint.h>
 #include <pthread.h>
@@ -44,31 +45,6 @@ static int  g_rt_policy = SCHED_OTHER;
 static int  g_rt_priority_min = 0;
 static int  g_rt_priority_max = 0;
 
-static bool AOS_PosixPolicyHasEnoughLevels(int policy, int *min_priority, int *max_priority)
-{
-    int min = sched_get_priority_min(policy);
-    int max = sched_get_priority_max(policy);
-
-    if (min < 0 || max < 0) {
-        return false;
-    }
-    if (min >= max) {
-        return false;
-    }
-
-    if ((unsigned)(max - min + 1) < AOS_CONFIG_TASK_PRIORITY_LEVELS) {
-        return false;
-    }
-
-    if (min_priority) {
-        *min_priority = min;
-    }
-    if (max_priority) {
-        *max_priority = max;
-    }
-    return true;
-}
-
 static int AOS_PosixMapPriority(aos_task_priority_t aos_priority)
 {
     // if (!g_rt_enabled) {
@@ -84,114 +60,6 @@ static int AOS_PosixMapPriority(aos_task_priority_t aos_priority)
     /* AOS: 0 is highest. POSIX RT: larger numeric value is higher. */
     int posix_priority = g_rt_priority_max - (int)(((unsigned)range * (unsigned)aos_priority) / (unsigned)(AOS_TASK_PRIORITY_LOWEST));
     return posix_priority;
-}
-
-static int32_t AOS_PosixConfigureRtPolicy(void)
-{
-    int fifo_min = 0;
-    int fifo_max = 0;
-    int rr_min = 0;
-    int rr_max = 0;
-    bool fifo_ok;
-    bool rr_ok;
-    int original_policy;
-    struct sched_param original_param;
-    struct sched_param probe_param;
-    int rc;
-
-    fifo_ok = AOS_PosixPolicyHasEnoughLevels(SCHED_FIFO, &fifo_min, &fifo_max);
-    rr_ok   = AOS_PosixPolicyHasEnoughLevels(SCHED_RR, &rr_min, &rr_max);
-
-    if (fifo_ok) {
-        g_rt_policy = SCHED_FIFO;
-        g_rt_priority_min = fifo_min;
-        g_rt_priority_max = fifo_max;
-    } else if (rr_ok) {
-        g_rt_policy = SCHED_RR;
-        g_rt_priority_min = rr_min;
-        g_rt_priority_max = rr_max;
-    } else {
-#if AOS_CONFIG_POSIX_RT_REQUIRED
-        /*
-         * Not a privilege problem: neither SCHED_FIFO nor SCHED_RR on
-         * this platform offers enough distinct priority levels to map
-         * AOS_CONFIG_TASK_PRIORITY_LEVELS onto. No process could ever
-         * satisfy this by acquiring more permissions.
-         */
-        return AOS_ERR_UNSUPPORTED;
-#else
-        g_rt_enabled = false;
-        return AOS_SUCCESS;
-#endif
-    }
-
-    rc = pthread_getschedparam(pthread_self(), &original_policy, &original_param);
-    if (rc != 0) {
-#if AOS_CONFIG_POSIX_RT_REQUIRED
-        return AOS_ERR_CREATION_FAILED;
-#else
-        g_rt_enabled = false;
-        return AOS_SUCCESS;
-#endif
-    }
-
-    probe_param.sched_priority = g_rt_priority_min;
-    rc = pthread_setschedparam(pthread_self(), g_rt_policy, &probe_param);
-    if (rc == 0) {
-        /*
-         * The RT scheduling probe succeeded.
-         *
-         * We only changed the current thread temporarily to verify
-         * that this process has permission to use the selected
-         * real-time scheduling policy.
-         */
-        g_rt_enabled = true;
-
-        /*
-        * Restore the original scheduler settings for the calling
-        * thread. Actual AOS tasks will receive their RT policy and
-        * priority when AOS_TaskCreate() is called.
-        */
-
-        rc = pthread_setschedparam(pthread_self(), original_policy, &original_param);
-
-        if (rc != 0) {
-            fprintf(stderr,
-                    "AOS: failed to restore original scheduler: %s\n",
-                    strerror(rc));
-
-            return AOS_ERR_CREATION_FAILED;
-        }
-
-        return AOS_SUCCESS;
-    }
-
-#if AOS_CONFIG_POSIX_RT_REQUIRED
-    /*
-     * rc is the pthread-style error number straight from
-     * pthread_setschedparam() (not errno) -- EPERM means the process
-     * lacks the privilege (e.g. CAP_SYS_NICE / an rtprio ulimit) to use
-     * this scheduling policy, which is exactly what AOS_ERR_PERMISSION_
-     * DENIED exists to name precisely instead of folding it into a
-     * generic creation failure. EINVAL means the platform rejected the
-     * policy/priority combination outright, i.e. it doesn't support it.
-     */
-    if (rc == EPERM) {
-        return AOS_ERR_PERMISSION_DENIED;
-    }
-    if (rc == EINVAL) {
-        return AOS_ERR_UNSUPPORTED;
-    }
-    return AOS_ERR_CREATION_FAILED;
-#else
-    g_rt_enabled = false;
-#if AOS_CONFIG_POSIX_RT_WARN_FALLBACK
-    fprintf(stderr,
-            "AOS: POSIX real-time scheduling unavailable (%s); falling back to SCHED_OTHER\n",
-            strerror(rc));
-#endif
-    return AOS_SUCCESS;
-#endif
 }
 
 bool AOS_PosixTaskIsRtEnabled(void)
@@ -225,7 +93,17 @@ int32_t AOS_PosixTaskInit(void)
     g_task_key_valid = true;
     pthread_mutex_unlock(&g_task_lock);
 
-    rc = AOS_PosixConfigureRtPolicy();
+    {
+        aos_port_sched_t sched;
+
+        rc = AOS_PortConfigureScheduling(&sched);
+        if (rc == AOS_SUCCESS) {
+            g_rt_enabled      = sched.rt_enabled;
+            g_rt_policy       = sched.policy;
+            g_rt_priority_min = sched.priority_min;
+            g_rt_priority_max = sched.priority_max;
+        }
+    }
     if (rc != AOS_SUCCESS) {
         pthread_mutex_lock(&g_task_lock);
         (void)pthread_key_delete(g_task_key);
@@ -598,6 +476,17 @@ void AOS_TaskExit(void)
     pthread_exit(NULL);
 }
 
+static bool AOS_PosixDeadlineReached(const struct timespec *deadline)
+{
+    struct timespec now;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
+        return true;   /* cannot measure: do not spin forever */
+    }
+    return (now.tv_sec > deadline->tv_sec) ||
+           (now.tv_sec == deadline->tv_sec && now.tv_nsec >= deadline->tv_nsec);
+}
+
 int32_t AOS_TaskDelay(uint32_t ms)
 {
     struct timespec deadline;
@@ -614,11 +503,34 @@ int32_t AOS_TaskDelay(uint32_t ms)
         deadline.tv_nsec -= 1000000000L;
     }
 
-    do {
+    /*
+     * The deadline is absolute, so retrying never extends the total wait.
+     *
+     * POSIX: clock_nanosleep() returns EINTR when a signal ends the sleep
+     * early. Two deviations are handled here, both found by running the
+     * test suite on other kernels:
+     *   - a libc that reports the interruption as -1 with errno == EINTR
+     *     (the return-value convention of nanosleep());
+     *   - NuttX 13.0.1, whose nxsig_clockwait() wakes on the signal and
+     *     returns 0 as if the interval had elapsed (only its relative
+     *     nanosleep() path compares the remaining time). A 200 ms delay
+     *     came back after 30 ms with "success".
+     * So the return code is not trusted as proof the interval elapsed: the
+     * clock is. A spurious early wake just loops back into the sleep.
+     */
+    for (;;) {
         rc = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &deadline, NULL);
-    } while (rc == EINTR);
 
-    return (rc == 0) ? AOS_SUCCESS : AOS_ERR_GENERIC;
+        if (rc == EINTR || (rc == -1 && errno == EINTR)) {
+            continue;
+        }
+        if (rc != 0) {
+            return AOS_ERR_GENERIC;
+        }
+        if (AOS_PosixDeadlineReached(&deadline)) {
+            return AOS_SUCCESS;
+        }
+    }
 }
 
 int32_t AOS_TaskYield(void)

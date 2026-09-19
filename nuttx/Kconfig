@@ -1,0 +1,86 @@
+#
+# Afligh8_osal -- NuttX configuration
+#
+
+menu "Afligh8 OSAL"
+
+config AOS_OSAL
+	bool "Afligh8 OSAL (aos_osal)"
+	default n
+	depends on !DISABLE_PTHREAD
+	select PRIORITY_INHERITANCE
+	select PTHREAD_MUTEX_TYPES
+	select CANCELLATION_POINTS
+	---help---
+		Afligh8's OS abstraction: tasks, priority-inheriting mutexes,
+		ISR-safe binary semaphores, monotonic time. The NuttX backend is a
+		thin port over a pthread-based core, so it needs priority
+		inheritance, mutex types, cancellation points, thread-local
+		storage (TLS_NELEM >= 1) and a pthread cleanup stack
+		(TLS_NCLEANUP >= 1) from the kernel.
+
+if AOS_OSAL
+
+config AOS_NUTTX_PRIORITY_HIGHEST
+	int "NuttX priority for AOS_TASK_PRIORITY_HIGHEST"
+	default 240
+	range 2 254
+	---help---
+		AOS priority 0 (the highest) maps onto this NuttX priority. 240
+		matches PX4_WQ_HP_BASE (SCHED_PRIORITY_MAX - 15), the ceiling PX4
+		uses for its own flight-critical work queues (attitude_control,
+		estimator, ...), so an AOS task's priority is directly comparable
+		to a PX4 module's. Keep it below SCHED_HPWORKPRIORITY (PX4: 249):
+		driver interrupt bottom halves run on the kernel's own
+		high-priority work queue and must never wait behind a flight task.
+
+config AOS_NUTTX_PRIORITY_LOWEST
+	int "NuttX priority for AOS_TASK_PRIORITY_LOWEST"
+	default 209
+	range 1 253
+	---help---
+		AOS_TASK_PRIORITY_LOWEST maps onto this NuttX priority. 209 sits
+		just above PX4's slow_driver (PX4_WQ_HP_BASE - 35 = 205), keeping
+		every AOS priority inside PX4's flight-critical band rather than
+		spreading down into NSH's (SCHED_PRIORITY_DEFAULT, 100) or the
+		low-priority work queue's (PX4: 50) territory.
+
+config AOS_OSAL_TESTS
+	bool "Build the OSAL test suite as NSH commands"
+	default n
+	---help---
+		Registers test_core, test_time, test_task, test_task_delay,
+		test_mutex, test_sem, test_bench_stats and bench_task_lifecycle as
+		builtin NSH commands. Each returns 0 on pass.
+
+config AOS_OSAL_TESTS_STACKSIZE
+	int "Stack size of each test command"
+	default 4096
+	depends on AOS_OSAL_TESTS
+
+choice AOS_NUTTX_TASK_BACKEND
+	prompt "Task primitive"
+	default AOS_NUTTX_TASK_BACKEND_PTHREAD
+	---help---
+		How an AOS task is implemented on NuttX. See
+		src/os/nuttx/include/aos_port.h for the full comment.
+
+config AOS_NUTTX_TASK_BACKEND_PTHREAD
+	bool "pthreads (shared core, proven join/delete handling)"
+	---help---
+		pthread_create() inside the calling process's task group -- the
+		same code path as the Linux backend. Default, and the only one
+		implemented today.
+
+config AOS_NUTTX_TASK_BACKEND_TASK_CREATE
+	bool "task_create() -- reserved, not implemented"
+	---help---
+		Native NuttX tasks (their own address space under
+		CONFIG_BUILD_PROTECTED/KERNEL) instead of pthreads. Selecting this
+		fails the build until src/os/nuttx/src/aos_nuttx_task.c exists.
+
+endchoice # AOS_NUTTX_TASK_BACKEND
+
+endif # AOS_OSAL
+
+endmenu
